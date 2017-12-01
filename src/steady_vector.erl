@@ -137,7 +137,10 @@ find(_Index, Vector) ->
     ?vec_error(Vector).
 
 -spec foldl(Fun, Acc0, Vector) -> AccN
-            when Fun :: fun((Value, Acc1) -> Acc2),
+            when Fun :: ValueFun | PairFun,
+                 ValueFun :: fun((Value, Acc1) -> Acc2),
+                 PairFun :: fun((Index, Value, Acc1) -> Acc2),
+                 Index :: index(),
                  Value :: term(),
                  Acc1 :: Acc0 | Acc2,
                  Acc2 :: term() | AccN,
@@ -148,13 +151,31 @@ foldl(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
     foldl_leaf_nodes(
       fun (Block, Acc) -> tuple_foldl(Fun, Acc, Block) end,
       Acc0, Vector);
+foldl(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
+    TupleFoldFun =
+        fun (Value, {IndexAcc, CallerAcc1}) ->
+                CallerAcc2 = Fun(IndexAcc, Value, CallerAcc1),
+                {IndexAcc + 1, CallerAcc2}
+        end,
+    LeafFoldAcc0 = {0, Acc0},
+    {_Count, LeafFoldAccN} =
+        foldl_leaf_nodes(
+          fun (Block, LeafFoldAcc) ->
+                  tuple_foldl(TupleFoldFun, LeafFoldAcc, Block)
+          end,
+          LeafFoldAcc0,
+          Vector),
+    LeafFoldAccN;
 foldl(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 foldl(_Fun, _Acc0, Vector) ->
     ?vec_error(Vector).
 
 -spec foldr(Fun, Acc0, Vector) -> AccN
-            when Fun :: fun((Value, Acc1) -> Acc2),
+            when Fun :: ValueFun | PairFun,
+                 ValueFun :: fun((Value, Acc1) -> Acc2),
+                 PairFun :: fun((Index, Value, Acc1) -> Acc2),
+                 Index :: index(),
                  Value :: term(),
                  Acc1 :: Acc0 | Acc2,
                  Acc2 :: term() | AccN,
@@ -165,6 +186,21 @@ foldr(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
     foldr_leaf_nodes(
       fun (Block, Acc) -> tuple_foldr(Fun, Acc, Block) end,
       Acc0, Vector);
+foldr(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
+    TupleFoldFun =
+        fun (Value, {IndexAcc, CallerAcc1}) ->
+                CallerAcc2 = Fun(IndexAcc, Value, CallerAcc1),
+                {IndexAcc - 1, CallerAcc2}
+        end,
+    LeafFoldAcc0 = {Vector#steady_vector.count - 1, Acc0},
+    {_Count, LeafFoldAccN} =
+        foldr_leaf_nodes(
+          fun (Block, LeafFoldAcc) ->
+                  tuple_foldr(TupleFoldFun, LeafFoldAcc, Block)
+          end,
+          LeafFoldAcc0,
+          Vector),
+    LeafFoldAccN;
 foldr(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 foldr(_Fun, _Acc0, Vector) ->
@@ -655,13 +691,27 @@ from_and_to_list_test() ->
           end,
           List, List2).
 
-foldl_test() ->
+value_foldl_test() ->
     C = 1000,
     List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
     ?MODULE:foldl(
        fun (VecValue, [ListValue | Next]) ->
                ?assertEqual(VecValue, ListValue),
+               Next
+       end,
+       List, Vec).
+
+pair_foldl_test() ->
+    C = 1000,
+    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    ?MODULE:foldl(
+       fun (VecIndex, {VecValue, OrigVecIndex},
+            [{ListValue, OrigListIndex} | Next]) ->
+               ?assertEqual(VecValue, ListValue),
+               ?assertEqual(VecIndex, OrigVecIndex - 1),
+               ?assertEqual(VecIndex, OrigListIndex - 1),
                Next
        end,
        List, Vec).
@@ -674,6 +724,21 @@ foldr_test() ->
     ?MODULE:foldr(
        fun (VecValue, [ListValue | Next]) ->
                ?assertEqual(VecValue, ListValue),
+               Next
+       end,
+       RevList, Vec).
+
+pair_foldr_test() ->
+    C = 1000,
+    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    RevList = lists:reverse(List),
+    ?MODULE:foldr(
+       fun (VecIndex, {VecValue, OrigVecIndex},
+            [{ListValue, OrigListIndex} | Next]) ->
+               ?assertEqual(VecValue, ListValue),
+               ?assertEqual(VecIndex, OrigVecIndex - 1),
+               ?assertEqual(VecIndex, OrigListIndex - 1),
                Next
        end,
        RevList, Vec).
