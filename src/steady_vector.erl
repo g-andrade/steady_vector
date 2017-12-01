@@ -44,7 +44,7 @@
 
 -define(is_index(I), (is_integer((I)) andalso (I) >= 0)).
 -define(is_existing_index(I, V), (?is_index((I)) andalso (I) < (V)#steady_vector.count)).
--define(is_new_index(I, V), ((I) =:= (V)#steady_vector.count)).
+-define(is_next_index(I, V), ((I) =:= (V)#steady_vector.count)).
 -define(is_vector(V), (is_record(V, steady_vector))).
 
 -define(arg_error, (error(badarg))).
@@ -353,7 +353,7 @@ set(Index, Value, Vector) when ?is_existing_index(Index, Vector) ->
             NewRoot = set_recur(Root, Vector#steady_vector.shift, Index, Value),
             Vector#steady_vector{ root = NewRoot }
     end;
-set(Index, Value, Vector) when ?is_new_index(Index, Vector) ->
+set(Index, Value, Vector) when ?is_next_index(Index, Vector) ->
     append(Value, Vector);
 set(_Index, _Value, Vector) when ?is_vector(Vector) ->
     ?arg_error;
