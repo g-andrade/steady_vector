@@ -364,92 +364,95 @@ tuple_set(Index, Value, Tuple) ->
 -ifdef(TEST).
 
 empty_test() ->
-    Vec = new(),
-    ?assert(is_empty(Vec)),
-    ?assertEqual(0, size(Vec)),
-    ?assertEqual(it_is_empty, last(Vec, it_is_empty)),
-    ?assertError(badarg, get(0, Vec)),
-    ?assertError(badarg, last(Vec)),
-    ?assertEqual(not_found, get(1, Vec, not_found)),
-    ?assertEqual(error, find(1, Vec)).
+    Vec = ?MODULE:new(),
+    ?assert(?MODULE:is_empty(Vec)),
+    ?assertEqual(0, ?MODULE:size(Vec)),
+    ?assertEqual(it_is_empty, ?MODULE:last(Vec, it_is_empty)),
+    ?assertError(badarg, ?MODULE:get(0, Vec)),
+    ?assertError(badarg, ?MODULE:last(Vec)),
+    ?assertEqual(not_found, ?MODULE:get(1, Vec, not_found)),
+    ?assertEqual(error, ?MODULE:find(1, Vec)).
 
 brute_get_test() ->
     Vec = #steady_vector{ count = 5, root = {{0,1,2}, {4}} },
-    ?assertEqual(0, get(0, Vec)),
-    ?assertEqual(1, get(1, Vec)),
-    ?assertEqual(2, get(2, Vec)),
-    ?assertEqual(4, get(4, Vec)).
+    ?assertEqual(0, ?MODULE:get(0, Vec)),
+    ?assertEqual(1, ?MODULE:get(1, Vec)),
+    ?assertEqual(2, ?MODULE:get(2, Vec)),
+    ?assertEqual(4, ?MODULE:get(4, Vec)).
 
 append_to_tail_test() ->
-    Vec1 = append(0, new()),
-    ?assertEqual(1, size(Vec1)),
-    ?assertNot(is_empty(Vec1)),
-    ?assertEqual(0, get(0, Vec1)),
+    Vec1 = ?MODULE:append(0, ?MODULE:new()),
+    ?assertEqual(1, ?MODULE:size(Vec1)),
+    ?assertNot(?MODULE:is_empty(Vec1)),
+    ?assertEqual(0, ?MODULE:get(0, Vec1)),
 
-    Vec2 = append(1, Vec1),
-    ?assertEqual(2, size(Vec2)),
-    ?assertEqual(0, get(0, Vec2)),
-    ?assertEqual(1, get(1, Vec2)).
+    Vec2 = ?MODULE:append(1, Vec1),
+    ?assertEqual(2, ?MODULE:size(Vec2)),
+    ?assertEqual(0, ?MODULE:get(0, Vec2)),
+    ?assertEqual(1, ?MODULE:get(1, Vec2)).
 
 append_to_root_test() ->
     C = 68,
     Vec1 =
         lists:foldl(
           fun append_and_assert_element_identity/2,
-          new(), lists:seq(0, C - 1)),
-    ?assertEqual(C, size(Vec1)),
+          ?MODULE:new(), lists:seq(0, C - 1)),
+    ?assertEqual(C, ?MODULE:size(Vec1)),
 
-    Vec2 = assert_element_identity( append(C, Vec1) ),
-    ?assertEqual(C + 1, size(Vec2)),
-    ?assertEqual(C, get(C, Vec2)),
+    Vec2 = assert_element_identity( ?MODULE:append(C, Vec1) ),
+    ?assertEqual(C + 1, ?MODULE:size(Vec2)),
+    ?assertEqual(C, ?MODULE:get(C, Vec2)),
 
-    ?assertError(badarg, get(C + 1, Vec2)),
-    ?assertError(badarg, get("hello", Vec2)),
-    ?assertError(badarg, get({1}, Vec2)).
+    ?assertError(badarg, ?MODULE:get(C + 1, Vec2)),
+    ?assertError(badarg, ?MODULE:get("hello", Vec2)),
+    ?assertError(badarg, ?MODULE:get({1}, Vec2)).
 
 remove_last_tail_test() ->
-    Vec1 = append(0, new()),
-    Vec1_R = remove_last(Vec1),
-    ?assertEqual(0, size(Vec1_R)),
+    Vec1 = ?MODULE:append(0, ?MODULE:new()),
+    Vec1_R = ?MODULE:remove_last(Vec1),
+    ?assertEqual(0, ?MODULE:size(Vec1_R)),
 
-    Vec2 = append(1, Vec1),
-    Vec2_R = remove_last(Vec2),
-    ?assertEqual(1, size(Vec2_R)),
-    ?assertEqual(0, get(0, Vec2_R)).
+    Vec2 = ?MODULE:append(1, Vec1),
+    Vec2_R = ?MODULE:remove_last(Vec2),
+    ?assertEqual(1, ?MODULE:size(Vec2_R)),
+    ?assertEqual(0, ?MODULE:get(0, Vec2_R)).
 
 remove_last_root_test() ->
     C = 20,
-    Vec1 = lists:foldl(fun append/2, new(), lists:seq(0, C - 1)),
+    Vec1 = lists:foldl(
+             fun ?MODULE:append/2,
+             ?MODULE:new(), lists:seq(0, C - 1)),
     Vec2 = lists:foldl(
              fun (Index, Acc) ->
                      assert_element_identity(Acc),
-                     ?assertEqual(Index + 1, size(Acc)),
-                     remove_last(Acc)
+                     ?assertEqual(Index + 1, ?MODULE:size(Acc)),
+                     ?MODULE:remove_last(Acc)
              end,
              Vec1, lists:seq(C - 1, 0, -1)),
 
-    ?assertEqual(0, size(Vec2)),
-    ?assertError(badarg, remove_last(Vec2)).
+    ?assertEqual(0, ?MODULE:size(Vec2)),
+    ?assertError(badarg, ?MODULE:remove_last(Vec2)).
 
 set_tail_test() ->
-    Vec1 = assert_element_identity( set(1, 1, set(0, 0, new())) ),
-    ?assertEqual(2, size(Vec1)),
+    Vec1 = assert_element_identity(
+             ?MODULE:set(1, 1, ?MODULE:set(0, 0, ?MODULE:new())) ),
+    ?assertEqual(2, ?MODULE:size(Vec1)),
 
     C = 4,
     IndexSeq = lists:seq(0, C - 1),
     Vec2A = lists:foldl(
-              fun append/2,
-              new(), IndexSeq),
+              fun ?MODULE:append/2,
+              ?MODULE:new(), IndexSeq),
     Vec2B = lists:foldl(
               fun (Index, Acc) ->
-                      set(Index, Index + 10, Acc)
+                      ?MODULE:set(Index, Index + 10, Acc)
               end,
               Vec1, IndexSeq),
 
-    ?assertEqual(size(Vec2A), size(Vec2B)),
+    ?assertEqual(?MODULE:size(Vec2A), ?MODULE:size(Vec2B)),
     lists:foreach(
       fun (Index) ->
-              ?assertEqual(get(Index, Vec2A), get(Index, Vec2B) - 10)
+              ?assertEqual(?MODULE:get(Index, Vec2A), ?MODULE:get(Index, Vec2B) - 10)
       end,
       IndexSeq).
 
@@ -457,46 +460,46 @@ set_root_test() ->
     C = 20,
     IndexSeq = lists:seq(0, C - 1),
     Vec1 = lists:foldl(
-              fun append/2,
-              new(), IndexSeq),
+              fun ?MODULE:append/2,
+              ?MODULE:new(), IndexSeq),
     Vec2 = lists:foldl(
               fun (Index, Acc) ->
-                      set(Index, Index + 10, Acc)
+                      ?MODULE:set(Index, Index + 10, Acc)
               end,
               Vec1, IndexSeq),
 
-    ?assertEqual(size(Vec1), size(Vec2)),
+    ?assertEqual(?MODULE:size(Vec1), ?MODULE:size(Vec2)),
     lists:foreach(
       fun (Index) ->
-              ?assertEqual(get(Index, Vec1), get(Index, Vec2) - 10)
+              ?assertEqual(?MODULE:get(Index, Vec1), ?MODULE:get(Index, Vec2) - 10)
       end,
       IndexSeq),
-    ?assertError(badarg, set(1, 1, new())),
-    ?assertError(badarg, set("bla", 1, new())).
+    ?assertError(badarg, ?MODULE:set(1, 1, ?MODULE:new())),
+    ?assertError(badarg, ?MODULE:set("bla", 1, ?MODULE:new())).
 
 append_and_assert_element_identity(Value, Vec1) ->
-    Vec2 = append(Value, Vec1),
+    Vec2 = ?MODULE:append(Value, Vec1),
     assert_element_identity(Vec2).
 
 assert_element_identity(Vec) ->
-    C = size(Vec),
+    C = ?MODULE:size(Vec),
 
     % "randomly" use different getters
     ValidationFun =
         case C rem 3 of
-            0 -> fun (Index) -> ?assertEqual(Index, get(Index, Vec)) end;
-            1 -> fun (Index) -> ?assertEqual(Index, get(Index, Vec, not_found)) end;
-            2 -> fun (Index) -> ?assertEqual({ok, Index}, find(Index, Vec)) end
+            0 -> fun (Index) -> ?assertEqual(Index, ?MODULE:get(Index, Vec)) end;
+            1 -> fun (Index) -> ?assertEqual(Index, ?MODULE:get(Index, Vec, not_found)) end;
+            2 -> fun (Index) -> ?assertEqual({ok, Index}, ?MODULE:find(Index, Vec)) end
         end,
 
     lists:foreach(ValidationFun, lists:seq(0, C - 1)),
 
     if C > 0 ->
-           ?assertEqual(C - 1, last(Vec, empty)),
-           ?assertEqual(C - 1, last(Vec));
+           ?assertEqual(C - 1, ?MODULE:last(Vec, empty)),
+           ?assertEqual(C - 1, ?MODULE:last(Vec));
        true ->
-           ?assertEqual(empty, last(Vec, empty)),
-           ?assertError(badarg, last(Vec))
+           ?assertEqual(empty, ?MODULE:last(Vec, empty)),
+           ?assertError(badarg, ?MODULE:last(Vec))
     end,
     Vec.
 
