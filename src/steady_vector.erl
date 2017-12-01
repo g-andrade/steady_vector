@@ -21,6 +21,7 @@
 -export([is_steady_vector/1]).      -ignore_xref({is_steady_vector,1}).
 -export([last/1]).                  -ignore_xref({last,1}).
 -export([last/2]).                  -ignore_xref({last,2}).
+-export([map/2]).                   -ignore_xref({map,2}).
 -export([new/0]).                   -ignore_xref({new,0}).
 -export([remove_last/1]).           -ignore_xref({remove_last,1}).
 -export([set/3]).                   -ignore_xref({set,3}).
@@ -212,6 +213,18 @@ last(#steady_vector{ count = Count } = Vector, Default) ->
 last(Vector, _Default) ->
     ?vec_error(Vector).
 
+-spec map(Fun, Vector1) -> Vector2
+            when Fun :: fun((Index, Term1) -> Term2),
+                 Index :: index(),
+                 Term1 :: term(),
+                 Term2 :: term(),
+                 Vector1 :: t(),
+                 Vector2 :: t().
+map(Fun, Vector1) ->
+    map_leaf_blocks(
+      fun (Block) -> tuple_map(Fun, Block) end,
+      Vector1).
+
 -spec new() -> Vector
             when Vector :: t().
 new() ->
@@ -384,6 +397,29 @@ foldr_parent_leaf_nodes(Fun, Acc0, ParentNode, Level) ->
       Acc0, ParentNode).
 
 %% ------------------------------------------------------------------
+%% Internal Function Definitions - Mapping
+%% ------------------------------------------------------------------
+
+map_leaf_blocks(Fun, Vector) ->
+    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
+    MappedTail = Fun(Tail),
+    MappedRoot = map_descendant_leaf_blocks(Fun, Root, Shift),
+    Vector#steady_vector{ root = MappedRoot, tail = MappedTail }.
+
+map_descendant_leaf_blocks(Fun, Node, Level) ->
+    ChildrenLevel = Level - ?shift,
+    tuple_map(
+      fun (ChildNode) ->
+              map_node_leaf_blocks(Fun, ChildNode, ChildrenLevel)
+      end,
+      Node).
+
+map_node_leaf_blocks(Fun, Node, Level) when Level > 0 ->
+    map_descendant_leaf_blocks(Fun, Node, Level);
+map_node_leaf_blocks(Fun, Block, _Level) ->
+    Fun(Block).
+
+%% ------------------------------------------------------------------
 %% Internal Function Definitions - Removing
 %% ------------------------------------------------------------------
 
@@ -460,6 +496,18 @@ tuple_foldr_recur(Fun, Acc1, Tuple, Index, Limit) ->
     Value = element(Index, Tuple),
     Acc2 = Fun(Value, Acc1),
     tuple_foldr_recur(Fun, Acc2, Tuple, Index - 1, Limit).
+
+-compile({inline,{tuple_map,2}}).
+tuple_map(Fun, Tuple) ->
+    tuple_map_recur(Fun, Tuple, tuple_size(Tuple), 0, []).
+
+-compile({inline,{tuple_map_recur,5}}).
+tuple_map_recur(_Fun, _Tuple, Index, Limit, Acc) when Index =:= Limit ->
+    list_to_tuple(Acc);
+tuple_map_recur(Fun, Tuple, Index, Limit, Acc) ->
+    Value = element(Index, Tuple),
+    MappedValue = Fun(Value),
+    tuple_map_recur(Fun, Tuple, Index - 1, Limit, [MappedValue | Acc]).
 
 -compile({inline,{tuple_get,2}}).
 tuple_get(Index, Tuple) ->
@@ -629,6 +677,20 @@ foldr_test() ->
                Next
        end,
        RevList, Vec).
+
+map_test() ->
+    C = 1000,
+    MapFun = fun ({V, Index}) -> {V, Index} end,
+    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    MappedList = lists:map(MapFun, List),
+    MappedVec = ?MODULE:map(MapFun, Vec),
+    ?MODULE:foldl(
+       fun (VecValue, [ListValue | Next]) ->
+               ?assertEqual(VecValue, ListValue),
+               Next
+       end,
+       MappedList, MappedVec).
 
 append_and_assert_element_identity(Value, Vec1) ->
     Vec2 = ?MODULE:append(Value, Vec1),
