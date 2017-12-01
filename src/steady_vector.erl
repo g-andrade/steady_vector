@@ -491,6 +491,25 @@ set_root_test() ->
     ?assertError(badarg, ?MODULE:set(1, 1, ?MODULE:new())),
     ?assertError(badarg, ?MODULE:set("bla", 1, ?MODULE:new())).
 
+from_and_to_list_test() ->
+    C = 1000,
+    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+
+    % convert from
+    Vec = ?MODULE:from_list(List),
+    ?assertEqual(length(List), ?MODULE:size(Vec)),
+
+    % convert to
+    List2 = ?MODULE:to_list(Vec),
+    ?assertEqual(?MODULE:size(Vec), length(List2)),
+
+    % all elements were kept
+    _ = lists:zipwith(
+          fun (Left, Right) ->
+                  ?assertEqual(Left, Right)
+          end,
+          List, List2).
+
 append_and_assert_element_identity(Value, Vec1) ->
     Vec2 = ?MODULE:append(Value, Vec1),
     assert_element_identity(Vec2).
