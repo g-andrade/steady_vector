@@ -285,7 +285,7 @@ foldl_node(_Fun, Acc, _Node, _Level, _Index) ->
 
 foldl_root(Fun, Acc1, Node, Tail, Level, Index) when Index < tuple_size(Node) ->
     Child = tuple_get(Index, Node),
-    Acc2 = foldl_node(Fun, Acc1, Child, Level - ?shift, Index),
+    Acc2 = foldl_node(Fun, Acc1, Child, Level - ?shift, 0),
     foldl_root(Fun, Acc2, Node, Tail, Level, Index + 1);
 foldl_root(Fun, Acc, _Node, Tail, _Level, _Index) ->
     foldl_tail(Fun, Acc, Tail, 0).
