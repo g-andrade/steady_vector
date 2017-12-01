@@ -510,6 +510,17 @@ from_and_to_list_test() ->
           end,
           List, List2).
 
+foldl_test() ->
+    C = 1000,
+    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    ?MODULE:foldl(
+       fun (VecValue, [ListValue | Next]) ->
+               ?assertEqual(VecValue, ListValue),
+               Next
+       end,
+       List, Vec).
+
 append_and_assert_element_identity(Value, Vec1) ->
     Vec2 = ?MODULE:append(Value, Vec1),
     assert_element_identity(Vec2).
