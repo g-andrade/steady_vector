@@ -63,7 +63,7 @@
           root = {} :: tuple(),
           tail = {} :: tuple()
          }).
--type t() :: #steady_vector{}.
+-opaque t() :: #steady_vector{}.
 -export_type([t/0]).
 
 %% ------------------------------------------------------------------
