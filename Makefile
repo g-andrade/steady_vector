@@ -29,10 +29,10 @@ clean:
 check: dialyzer xref
 
 dialyzer:
-	@$(REBAR3) as development dialyzer
+	@$(REBAR3) dialyzer
 
 xref:
-	@$(REBAR3) as development xref
+	@$(REBAR3) xref
 
 test:
 	@$(REBAR3) as $(TEST_PROFILE) eunit
