@@ -176,8 +176,9 @@ remove_last(#steady_vector{ count = Count } = Vector) when Count > 1 ->
     {NewRoot, NewTail} = remove_last_recur(Root, Shift),
     if tuple_size(NewRoot) =:= 1 andalso Shift > ?shift ->
            NewShift = Shift - ?shift,
-           {NewRoot} = NewRoot, % remove topmost tree level
-           Vector#steady_vector{ count = NewCount, root = NewRoot, shift = NewShift, tail = NewTail };
+           {InnerNewRoot} = NewRoot, % remove topmost tree level
+           Vector#steady_vector{ count = NewCount, root = InnerNewRoot,
+                                 shift = NewShift, tail = NewTail };
        true ->
            Vector#steady_vector{ count = NewCount, root = NewRoot, tail = NewTail }
     end;
