@@ -226,14 +226,9 @@ size(Vector) ->
 -spec to_list(Vector) -> list()
             when Vector :: t().
 to_list(Vector) ->
-    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    Acc = tuple_to_list(Tail),
-    if Root =:= {} ->
-           Acc;
-       true ->
-           IsBig = (Shift > ?shift bsl 1),
-           to_list_recur(Root, Shift, tuple_size(Root) - 1, IsBig, Acc)
-    end.
+    foldr(
+      fun (Value, Acc) -> [Value | Acc] end,
+      [], Vector).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Appending
@@ -381,31 +376,12 @@ set_recur(Leaf, _Level, Index, Val) ->
     ValueIndex = Index band ?mask,
     tuple_set(ValueIndex, Val, Leaf).
 
+%% ------------------------------------------------------------------
+%% Internal Function Definitions - Utilities
+%% ------------------------------------------------------------------
+
 tail_start(#steady_vector{} = Vector) ->
     Vector#steady_vector.count - tuple_size(Vector#steady_vector.tail).
-
-to_list_recur(Node, Level, Index, IsBig, Acc) when Level > 0 ->
-    Child = tuple_get(Index, Node),
-    NewAcc = to_list_recur(Child, Level - ?shift, tuple_size(Child) - 1, IsBig, Acc),
-    if Index > 0 ->
-           to_list_recur(Node, Level, Index - 1, IsBig, NewAcc);
-       true ->
-           NewAcc
-    end;
-to_list_recur(Node, _Level, Index, IsBig, Acc) when IsBig ->
-    Child = tuple_get(Index, Node),
-    NewAcc = [Child | Acc],
-    to_list_leaf(Node, Index - 1, NewAcc);
-to_list_recur(Node, _Level, _Index, _IsBig, Acc) ->
-    tuple_to_list(Node) ++ Acc.
-
-to_list_leaf(Node, Index, Acc) ->
-    NewAcc = [tuple_get(Index, Node) | Acc],
-    if Index > 0 ->
-           to_list_leaf(Node, Index - 1, NewAcc);
-       true ->
-           NewAcc
-    end.
 
 tuple_append(Value, Tuple) ->
     erlang:append_element(Tuple, Value).
