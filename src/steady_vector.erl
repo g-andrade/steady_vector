@@ -18,6 +18,7 @@
 -export([foldr/3]).                 -ignore_xref({foldr,3}).
 -export([from_list/1]).             -ignore_xref({from_list,1}).
 -export([is_empty/1]).              -ignore_xref({is_empty,1}).
+-export([is_steady_vector/1]).      -ignore_xref({is_steady_vector,1}).
 -export([last/1]).                  -ignore_xref({last,1}).
 -export([last/2]).                  -ignore_xref({last,2}).
 -export([new/0]).                   -ignore_xref({new,0}).
@@ -182,6 +183,11 @@ is_empty(Vector) when ?is_vector(Vector) ->
     Vector#steady_vector.count =:= 0;
 is_empty(Vector) ->
     ?vec_error(Vector).
+
+-spec is_steady_vector(Term) -> boolean()
+            when Term :: term().
+is_steady_vector(Term) ->
+    ?is_vector(Term).
 
 -spec last(Vector) -> Value | no_return()
             when Vector :: t(),
