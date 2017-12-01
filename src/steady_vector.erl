@@ -125,15 +125,12 @@ foldl(Fun, Acc0, Vector) ->
     #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
     foldl_root(Fun, Acc0, Root, Tail, Shift, 0).
 
+
 -spec from_list(List) -> Vector
             when List :: list(),
                  Vector :: t().
 from_list(List) ->
-    lists:foldl(
-      fun (Value, Acc) ->
-              append(Acc, Value)
-      end,
-      new(), List).
+    lists:foldl(fun append/2, new(), List).
 
 -spec is_empty(Vector) -> boolean()
             when Vector :: t().
