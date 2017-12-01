@@ -13,6 +13,7 @@
 -export([append/2]).                -ignore_xref({append,2}).
 -export([get/2]).                   -ignore_xref({get,2}).
 -export([get/3]).                   -ignore_xref({get,3}).
+-export([filter/2]).                -ignore_xref({filter,2}).
 -export([find/2]).                  -ignore_xref({find,2}).
 -export([foldl/3]).                 -ignore_xref({foldl,3}).
 -export([foldr/3]).                 -ignore_xref({foldr,3}).
@@ -120,6 +121,37 @@ get(Index, Vector, Default) when ?is_index(Index), ?is_vector(Vector) ->
 get(_Index, Vector, _Default) when ?is_vector(Vector) ->
     ?arg_error;
 get(_Index, Vector, _Default) ->
+    ?vec_error(Vector).
+
+-spec filter(Fun, Vector1) -> Vector2
+            when Fun :: ValueFun | PairFun,
+                 ValueFun :: fun ((Value) -> boolean()),
+                 PairFun :: fun((Index, Value) -> boolean()),
+                 Index :: index(),
+                 Value :: term(),
+                 Vector1 :: t(),
+                 Vector2 :: t().
+filter(Fun, Vector) when is_function(Fun, 1) ->
+    foldl(
+      fun (Value, Acc) ->
+              case Fun(Value) of
+                  true -> append(Value, Acc);
+                  false -> Acc
+              end
+      end,
+      new(), Vector);
+filter(Fun, Vector) when is_function(Fun, 2) ->
+    foldl(
+      fun (Index, Value, Acc) ->
+              case Fun(Index, Value) of
+                  true -> append(Value, Acc);
+                  false -> Acc
+              end
+      end,
+      new(), Vector);
+filter(_Fun, Vector) when ?is_vector(Vector) ->
+    ?arg_error;
+filter(_Fun, Vector) ->
     ?vec_error(Vector).
 
 -spec find(Index, Vector) -> {ok, Value} | error
@@ -704,6 +736,38 @@ from_and_to_list_test() ->
           end,
           List, List2).
 
+value_filter_test() ->
+    C = 1000,
+    FilterFun  = fun ({V, _Index}) -> V band 1 =:= 0 end,
+    List = [{rand:uniform(1000), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    FilteredList = lists:filter(FilterFun, List),
+    FilteredVec = ?MODULE:filter(FilterFun, Vec),
+    ?MODULE:foldl(
+       fun (VecValue, [ListValue | Next]) ->
+               ?assertEqual(VecValue, ListValue),
+               Next
+       end,
+       FilteredList, FilteredVec).
+
+pair_filter_test() ->
+    C = 1000,
+    ListFilterFun = fun ({V, _Index}) -> V band 1 =:= 0 end,
+    VecFilterFun = fun (Index, {_, OrigIndex} = Value) ->
+                        ?assertEqual(Index, OrigIndex - 1),
+                        ListFilterFun(Value)
+                   end,
+    List = [{rand:uniform(1000), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    FilteredList = lists:filter(ListFilterFun, List),
+    FilteredVec = ?MODULE:filter(VecFilterFun, Vec),
+    ?MODULE:foldl(
+       fun (VecValue, [ListValue | Next]) ->
+               ?assertEqual(VecValue, ListValue),
+               Next
+       end,
+       FilteredList, FilteredVec).
+
 value_foldl_test() ->
     C = 1000,
     List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
@@ -729,7 +793,7 @@ pair_foldl_test() ->
        end,
        List, Vec).
 
-foldr_test() ->
+value_foldr_test() ->
     C = 1000,
     List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
@@ -756,7 +820,7 @@ pair_foldr_test() ->
        end,
        RevList, Vec).
 
-map_test() ->
+value_map_test() ->
     C = 1000,
     MapFun = fun ({V, Index}) -> {V * 2, Index} end,
     List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
@@ -773,7 +837,8 @@ map_test() ->
 pair_map_test() ->
     C = 1000,
     ListMapFun = fun ({V, Index}) -> {V * 2, Index} end,
-    VecMapFun = fun (Index, Value) ->
+    VecMapFun = fun (Index, {_, OrigIndex} = Value) ->
+                        ?assertEqual(Index, OrigIndex - 1),
                         ListMapFun(Value)
                 end,
     List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
