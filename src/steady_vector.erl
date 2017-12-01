@@ -227,7 +227,7 @@ to_list(Vector) ->
     end.
 
 %% ------------------------------------------------------------------
-%% Internal Function Definitions
+%% Internal Function Definitions - Appending
 %% ------------------------------------------------------------------
 
 append_recur(Node, Level, Tail) when Level > ?shift ->
@@ -250,6 +250,10 @@ append_here(Node, TailPath) ->
             {overflow, {TailPath}}
     end.
 
+%% ------------------------------------------------------------------
+%% Internal Function Definitions - Fetching
+%% ------------------------------------------------------------------
+
 fast_get(Index, Vector) ->
     ValueIndex = Index band ?mask,
     case Index >= tail_start(Vector) of
@@ -266,6 +270,10 @@ get_recur(Node, Level, Index) when Level > 0 ->
     get_recur(Child, Level - ?shift, Index);
 get_recur(Leaf, _Level, _Index) ->
     Leaf.
+
+%% ------------------------------------------------------------------
+%% Internal Function Definitions - Folding Left
+%% ------------------------------------------------------------------
 
 foldl_node(Fun, Acc1, Node, Level, Index) when Level > 0, Index < tuple_size(Node) ->
     Child = tuple_get(Index, Node),
@@ -292,6 +300,10 @@ foldl_tail(Fun, Acc1, Tail, Index) when Index < tuple_size(Tail) ->
 foldl_tail(_Fun, AccN, _Tail, _Index) ->
     AccN.
 
+%% ------------------------------------------------------------------
+%% Internal Function Definitions - Removing
+%% ------------------------------------------------------------------
+
 remove_last_recur(Node, Level) when Level > ?shift ->
     ChildIndex = tuple_size(Node) - 1,
     Child = tuple_get(ChildIndex, Node),
@@ -308,6 +320,10 @@ remove_last_recur(Node, _Level) ->
     Child = tuple_get(ChildIndex, Node),
     NewNode = tuple_delete(ChildIndex, Node),
     {NewNode, Child}.
+
+%% ------------------------------------------------------------------
+%% Internal Function Definitions - Setting
+%% ------------------------------------------------------------------
 
 set_recur(Node, Level, Index, Val) when Level > 0 ->
     ChildIndex = (Index bsr Level) band ?mask,
