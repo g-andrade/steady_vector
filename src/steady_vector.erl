@@ -36,8 +36,8 @@
 -define(shift, 5).
 -endif.
 
--define(block, (1 bsl ?shift)).
--define(mask, (?block - 1)).
+-define(block_size, (1 bsl ?shift)).
+-define(mask, (?block_size - 1)).
 
 -define(is_index(I), (is_integer((I)) andalso (I) >= 0)).
 -define(is_existing_index(I, V), (?is_index((I)) andalso (I) < (V)#steady_vector.count)).
@@ -74,7 +74,7 @@
             when Value :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
-append(Value, #steady_vector{ tail = Tail } = Vector) when tuple_size(Tail) < ?block ->
+append(Value, #steady_vector{ tail = Tail } = Vector) when tuple_size(Tail) < ?block_size ->
     Vector#steady_vector{
       count = Vector#steady_vector.count + 1,
       tail = tuple_append(Value, Tail)
@@ -143,8 +143,9 @@ find(_Index, Vector) ->
                  Vector :: t(),
                  AccN :: term().
 foldl(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
-    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    foldl_root(Fun, Acc0, Root, Tail, Shift, 0);
+    foldl_leaf_nodes(
+      fun (Block, Acc) -> tuple_foldl(Fun, Acc, Block) end,
+      Acc0, Vector);
 foldl(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 foldl(_Fun, _Acc0, Vector) ->
@@ -159,8 +160,9 @@ foldl(_Fun, _Acc0, Vector) ->
                  Vector :: t(),
                  AccN :: term().
 foldr(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
-    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    foldr_tail(Fun, Acc0, Tail, Root, Shift);
+    foldr_leaf_nodes(
+      fun (Block, Acc) -> tuple_foldr(Fun, Acc, Block) end,
+      Acc0, Vector);
 foldr(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 foldr(_Fun, _Acc0, Vector) ->
@@ -268,8 +270,10 @@ size(Vector) ->
 -spec to_list(Vector) -> list()
             when Vector :: t().
 to_list(Vector) ->
-    foldr(
-      fun (Value, Acc) -> [Value | Acc] end,
+    foldr_leaf_nodes(
+      fun (Block, Acc) ->
+              tuple_to_list(Block) ++ Acc
+      end,
       [], Vector).
 
 %% ------------------------------------------------------------------
@@ -289,7 +293,7 @@ append_recur(Node, _Level, Tail) ->
     append_here(Node, Tail).
 
 append_here(Node, TailPath) ->
-    case tuple_size(Node) < ?block of
+    case tuple_size(Node) < ?block_size of
         true ->
             {ok, tuple_append(TailPath, Node)};
         _ ->
@@ -321,68 +325,57 @@ get_recur(Leaf, _Level, _Index) ->
 %% Internal Function Definitions - Folding Left
 %% ------------------------------------------------------------------
 
-foldl_node(Fun, Acc1, Node, Level, Index) when Level > 0, Index < tuple_size(Node) ->
-    Child = tuple_get(Index, Node),
-    Acc2 = foldl_node(Fun, Acc1, Child, Level - ?shift, 0),
-    foldl_node(Fun, Acc2, Node, Level, Index + 1);
-foldl_node(Fun, Acc1, Node, Level, Index) when Index < tuple_size(Node) ->
-    Value = tuple_get(Index, Node),
-    Acc2 = Fun(Value, Acc1),
-    foldl_node(Fun, Acc2, Node, Level, Index + 1);
-foldl_node(_Fun, Acc, _Node, _Level, _Index) ->
-    Acc.
+foldl_leaf_nodes(Fun, Acc0, Vector) ->
+    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
+    foldl_leaf_nodes(Fun, Acc0, Root, Tail, Shift).
 
-foldl_root(Fun, Acc1, Root, Tail, Level, Index) when Index < tuple_size(Root) ->
-    Child = tuple_get(Index, Root),
-    Acc2 = foldl_node(Fun, Acc1, Child, Level - ?shift, 0),
-    foldl_root(Fun, Acc2, Root, Tail, Level, Index + 1);
-foldl_root(Fun, Acc, _Root, Tail, _Level, _Index) ->
-    foldl_tail(Fun, Acc, Tail, 0).
+foldl_leaf_nodes(Fun, Acc1, Root, Tail, Level) ->
+    Acc2 = foldl_root_leaf_nodes(Fun, Acc1, Root, Level),
+    Fun(Tail, Acc2).
 
-foldl_tail(Fun, Acc1, Tail, Index) when Index < tuple_size(Tail) ->
-    Value = tuple_get(Index, Tail),
-    Acc2 = Fun(Value, Acc1),
-    foldl_tail(Fun, Acc2, Tail, Index + 1);
-foldl_tail(_Fun, AccN, _Tail, _Index) ->
-    AccN.
+foldl_root_leaf_nodes(Fun, Acc, Root, Level) ->
+    foldl_parent_leaf_nodes(Fun, Acc, Root, Level).
+
+foldl_node_leaf_nodes(Fun, Acc, Node, Level) when Level > 0 ->
+    foldl_parent_leaf_nodes(Fun, Acc, Node, Level);
+foldl_node_leaf_nodes(Fun, Acc, Node, _Level) ->
+    Fun(Node, Acc).
+
+foldl_parent_leaf_nodes(Fun, Acc0, ParentNode, Level) ->
+    ChildrenLevel = Level - ?shift,
+    tuple_foldl(
+      fun (Child, Acc) ->
+              foldl_node_leaf_nodes(Fun, Acc, Child, ChildrenLevel)
+      end,
+      Acc0, ParentNode).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Folding Right
 %% ------------------------------------------------------------------
 
-foldr_node(Fun, Acc, Node, Level) ->
-    foldr_node(Fun, Acc, Node, Level, tuple_size(Node) - 1).
+foldr_leaf_nodes(Fun, Acc0, Vector) ->
+    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
+    foldr_leaf_nodes(Fun, Acc0, Root, Tail, Shift).
 
-foldr_node(Fun, Acc1, Node, Level, Index) when Level > 0, Index >= 0 ->
-    Child = tuple_get(Index, Node),
-    Acc2 = foldr_node(Fun, Acc1, Child, Level - ?shift),
-    foldr_node(Fun, Acc2, Node, Level, Index - 1);
-foldr_node(Fun, Acc1, Node, Level, Index) when Index >= 0 ->
-    Value = tuple_get(Index, Node),
-    Acc2 = Fun(Value, Acc1),
-    foldr_node(Fun, Acc2, Node, Level, Index - 1);
-foldr_node(_Fun, Acc, _Node, _Level, _Index) ->
-    Acc.
+foldr_leaf_nodes(Fun, Acc1, Root, Tail, Level) ->
+    Acc2 = Fun(Tail, Acc1),
+    foldr_root_leaf_nodes(Fun, Acc2, Root, Level).
 
-foldr_root(Fun, Acc, Root, Level) ->
-    foldr_root(Fun, Acc, Root, Level, tuple_size(Root) - 1).
+foldr_root_leaf_nodes(Fun, Acc, Root, Level) ->
+    foldr_parent_leaf_nodes(Fun, Acc, Root, Level).
 
-foldr_root(Fun, Acc1, Root, Level, Index) when Index >= 0 ->
-    Child = tuple_get(Index, Root),
-    Acc2 = foldr_node(Fun, Acc1, Child, Level - ?shift),
-    foldr_root(Fun, Acc2, Root, Level, Index - 1);
-foldr_root(_Fun, Acc, _Root, _Level, _Index) ->
-    Acc.
+foldr_node_leaf_nodes(Fun, Acc, Node, Level) when Level > 0 ->
+    foldr_parent_leaf_nodes(Fun, Acc, Node, Level);
+foldr_node_leaf_nodes(Fun, Acc, Node, _Level) ->
+    Fun(Node, Acc).
 
-foldr_tail(Fun, Acc, Tail, Root, Shift) ->
-    foldr_tail(Fun, Acc, Tail, Root, Shift, tuple_size(Tail) - 1).
-
-foldr_tail(Fun, Acc1, Tail, Root, Shift, Index) when Index >= 0 ->
-    Value = tuple_get(Index, Tail),
-    Acc2 = Fun(Value, Acc1),
-    foldr_tail(Fun, Acc2, Tail, Root, Shift, Index - 1);
-foldr_tail(Fun, Acc, _Tail, Root, Shift, _Index) ->
-    foldr_root(Fun, Acc, Root, Shift).
+foldr_parent_leaf_nodes(Fun, Acc0, ParentNode, Level) ->
+    ChildrenLevel = Level - ?shift,
+    tuple_foldr(
+      fun (Child, Acc) ->
+              foldr_node_leaf_nodes(Fun, Acc, Child, ChildrenLevel)
+      end,
+      Acc0, ParentNode).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Removing
@@ -422,21 +415,51 @@ set_recur(Leaf, _Level, Index, Val) ->
 %% Internal Function Definitions - Utilities
 %% ------------------------------------------------------------------
 
+-compile({inline,{tail_start,1}}).
 tail_start(#steady_vector{} = Vector) ->
     Vector#steady_vector.count - tuple_size(Vector#steady_vector.tail).
 
+-compile({inline,{tuple_append,2}}).
 tuple_append(Value, Tuple) ->
     erlang:append_element(Tuple, Value).
 
+-compile({inline,{tuple_delete,2}}).
 tuple_delete(Index, Tuple) ->
     erlang:delete_element(Index + 1, Tuple).
 
+-compile({inline,{tuple_delete_last,1}}).
 tuple_delete_last(Tuple) ->
     erlang:delete_element(tuple_size(Tuple), Tuple).
 
+-compile({inline,{tuple_foldl,3}}).
+tuple_foldl(Fun, Acc0, Tuple) ->
+    tuple_foldl_recur(Fun, Acc0, Tuple, 1, tuple_size(Tuple) + 1).
+
+-compile({inline,{tuple_foldl_recur,5}}).
+tuple_foldl_recur(_Fun, AccN, _Tuple, Index, Limit) when Index =:= Limit ->
+    AccN;
+tuple_foldl_recur(Fun, Acc1, Tuple, Index, Limit) ->
+    Value = element(Index, Tuple),
+    Acc2 = Fun(Value, Acc1),
+    tuple_foldl_recur(Fun, Acc2, Tuple, Index + 1, Limit).
+
+-compile({inline,{tuple_foldr,3}}).
+tuple_foldr(Fun, Acc0, Tuple) ->
+    tuple_foldr_recur(Fun, Acc0, Tuple, tuple_size(Tuple), 0).
+
+-compile({inline,{tuple_foldr_recur,5}}).
+tuple_foldr_recur(_Fun, AccN, _Tuple, Index, Limit) when Index =:= Limit ->
+    AccN;
+tuple_foldr_recur(Fun, Acc1, Tuple, Index, Limit) ->
+    Value = element(Index, Tuple),
+    Acc2 = Fun(Value, Acc1),
+    tuple_foldr_recur(Fun, Acc2, Tuple, Index - 1, Limit).
+
+-compile({inline,{tuple_get,2}}).
 tuple_get(Index, Tuple) ->
     element(Index + 1, Tuple).
 
+-compile({inline,{tuple_set,3}}).
 tuple_set(Index, Value, Tuple) ->
     setelement(Index + 1, Tuple, Value).
 
