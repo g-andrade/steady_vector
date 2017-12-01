@@ -4,9 +4,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--compile(
-   [{no_auto_import,[{size,1}]}
-   ]).
+-compile({no_auto_import,[{size,1}]}).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
