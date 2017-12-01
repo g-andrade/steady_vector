@@ -113,7 +113,7 @@ get(_Index, Vector) ->
 get(Index, Vector, Default) when ?is_index(Index), ?is_vector(Vector) ->
     case Index < Vector#steady_vector.count of
         true -> fast_get(Index, Vector);
-        false -> Default
+        _ -> Default
     end;
 get(_Index, Vector, _Default) when ?is_vector(Vector) ->
     ?arg_error;
@@ -127,7 +127,7 @@ get(_Index, Vector, _Default) ->
 find(Index, Vector) when ?is_index(Index), ?is_vector(Vector) ->
     case Index < Vector#steady_vector.count of
         true -> {ok, fast_get(Index, Vector)};
-        false -> error
+        _ -> error
     end;
 find(_Index, Vector) when ?is_vector(Vector) ->
     ?arg_error;
@@ -187,7 +187,7 @@ is_empty(Vector) ->
 last(#steady_vector{ count = Count } = Vector) ->
     case Count > 0 of
         true -> fast_get(Count - 1, Vector);
-        false -> ?empty_vec_error(Vector)
+        _ -> ?empty_vec_error(Vector)
     end;
 last(Vector) ->
     ?vec_error(Vector).
@@ -199,7 +199,7 @@ last(Vector) ->
 last(#steady_vector{ count = Count } = Vector, Default) ->
     case Count > 0 of
         true -> fast_get(Count - 1, Vector);
-        false -> Default
+        _ -> Default
     end;
 last(Vector, _Default) ->
     ?vec_error(Vector).
@@ -246,7 +246,7 @@ set(Index, Value, Vector) when ?is_existing_index(Index, Vector) ->
             ValueIndex = Index band ?mask,
             NewTail = tuple_set(ValueIndex, Value, Tail),
             Vector#steady_vector{ tail = NewTail };
-        false ->
+        _ ->
             Root = Vector#steady_vector.root,
             NewRoot = set_recur(Root, Vector#steady_vector.shift, Index, Value),
             Vector#steady_vector{ root = NewRoot }
