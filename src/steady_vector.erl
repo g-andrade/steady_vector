@@ -15,6 +15,7 @@
 -export([get/3]).                   -ignore_xref({get,3}).
 -export([find/2]).                  -ignore_xref({find,2}).
 -export([foldl/3]).                 -ignore_xref({foldl,3}).
+-export([foldr/3]).                 -ignore_xref({foldr,3}).
 -export([from_list/1]).             -ignore_xref({from_list,1}).
 -export([is_empty/1]).              -ignore_xref({is_empty,1}).
 -export([last/1]).                  -ignore_xref({last,1}).
@@ -125,6 +126,17 @@ foldl(Fun, Acc0, Vector) ->
     #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
     foldl_root(Fun, Acc0, Root, Tail, Shift, 0).
 
+-spec foldr(Fun, Acc0, Vector) -> AccN
+            when Fun :: fun((Value, Acc1) -> Acc2),
+                 Value :: term(),
+                 Acc1 :: Acc0 | Acc2,
+                 Acc2 :: term() | AccN,
+                 Acc0 :: term(),
+                 Vector :: t(),
+                 AccN :: term().
+foldr(Fun, Acc0, Vector) ->
+    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
+    foldr_tail(Fun, Acc0, Tail, Root, Shift).
 
 -spec from_list(List) -> Vector
             when List :: list(),
@@ -296,6 +308,44 @@ foldl_tail(Fun, Acc1, Tail, Index) when Index < tuple_size(Tail) ->
     foldl_tail(Fun, Acc2, Tail, Index + 1);
 foldl_tail(_Fun, AccN, _Tail, _Index) ->
     AccN.
+
+%% ------------------------------------------------------------------
+%% Internal Function Definitions - Folding Right
+%% ------------------------------------------------------------------
+
+foldr_node(Fun, Acc, Node, Level) ->
+    foldr_node(Fun, Acc, Node, Level, tuple_size(Node) - 1).
+
+foldr_node(Fun, Acc1, Node, Level, Index) when Level > 0, Index >= 0 ->
+    Child = tuple_get(Index, Node),
+    Acc2 = foldr_node(Fun, Acc1, Child, Level - ?shift),
+    foldr_node(Fun, Acc2, Node, Level, Index - 1);
+foldr_node(Fun, Acc1, Node, Level, Index) when Index >= 0 ->
+    Value = tuple_get(Index, Node),
+    Acc2 = Fun(Value, Acc1),
+    foldr_node(Fun, Acc2, Node, Level, Index - 1);
+foldr_node(_Fun, Acc, _Node, _Level, _Index) ->
+    Acc.
+
+foldr_root(Fun, Acc, Root, Level) ->
+    foldr_root(Fun, Acc, Root, Level, tuple_size(Root) - 1).
+
+foldr_root(Fun, Acc1, Root, Level, Index) when Index >= 0 ->
+    Child = tuple_get(Index, Root),
+    Acc2 = foldr_node(Fun, Acc1, Child, Level - ?shift),
+    foldr_root(Fun, Acc2, Root, Level, Index - 1);
+foldr_root(_Fun, Acc, _Root, _Level, _Index) ->
+    Acc.
+
+foldr_tail(Fun, Acc, Tail, Root, Shift) ->
+    foldr_tail(Fun, Acc, Tail, Root, Shift, tuple_size(Tail) - 1).
+
+foldr_tail(Fun, Acc1, Tail, Root, Shift, Index) when Index >= 0 ->
+    Value = tuple_get(Index, Tail),
+    Acc2 = Fun(Value, Acc1),
+    foldr_tail(Fun, Acc2, Tail, Root, Shift, Index - 1);
+foldr_tail(Fun, Acc, _Tail, Root, Shift, _Index) ->
+    foldr_root(Fun, Acc, Root, Shift).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Removing
@@ -520,6 +570,18 @@ foldl_test() ->
                Next
        end,
        List, Vec).
+
+foldr_test() ->
+    C = 1000,
+    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    RevList = lists:reverse(List),
+    ?MODULE:foldr(
+       fun (VecValue, [ListValue | Next]) ->
+               ?assertEqual(VecValue, ListValue),
+               Next
+       end,
+       RevList, Vec).
 
 append_and_assert_element_identity(Value, Vec1) ->
     Vec2 = ?MODULE:append(Value, Vec1),
