@@ -39,8 +39,14 @@
 -define(block, (1 bsl ?shift)).
 -define(mask, (?block - 1)).
 
--define(is_existing_index(I, V), (is_integer((I)) andalso (I) >= 0 andalso (I) < (V)#steady_vector.count)).
--define(is_new_index(I, V), ((I)=:= (V)#steady_vector.count)).
+-define(is_index(I), (is_integer((I)) andalso (I) >= 0)).
+-define(is_existing_index(I, V), (?is_index((I)) andalso (I) < (V)#steady_vector.count)).
+-define(is_new_index(I, V), ((I) =:= (V)#steady_vector.count)).
+-define(is_vector(V), (is_record(V, steady_vector))).
+
+-define(arg_error, (error(badarg))).
+-define(vec_error(Vector), (error({badvec,Vector}))).
+-define(empty_vec_error, (error(emptyvec))).
 
 %% ------------------------------------------------------------------
 %% Record and Type Definitions
@@ -73,7 +79,7 @@ append(Value, #steady_vector{ tail = Tail } = Vector) when tuple_size(Tail) < ?b
       count = Vector#steady_vector.count + 1,
       tail = tuple_append(Value, Tail)
      };
-append(NewValue, Vector) ->
+append(NewValue, #steady_vector{} = Vector) ->
     #steady_vector{ count = Count, shift = Shift, root = Root, tail = Tail } = Vector,
     NewCount = Count + 1,
     NewTail = {NewValue},
@@ -84,7 +90,9 @@ append(NewValue, Vector) ->
             NewShift = Shift + ?shift,
             NewRoot = {Root, TailPath},
             Vector#steady_vector{ count = NewCount, shift = NewShift, root = NewRoot, tail = NewTail }
-    end.
+    end;
+append(_NewValue, Vector) ->
+    ?vec_error(Vector).
 
 -spec get(Index, Vector) -> Value | no_return()
             when Index :: index(),
@@ -92,27 +100,39 @@ append(NewValue, Vector) ->
                  Value :: term().
 get(Index, Vector) when ?is_existing_index(Index, Vector) ->
     fast_get(Index, Vector);
-get(_Index, _Vec) ->
-    error(badarg).
+get(_Index, Vector) when ?is_vector(Vector) ->
+    ?arg_error;
+get(_Index, Vector) ->
+    ?vec_error(Vector).
 
 -spec get(Index, Vector, Default) -> Value | Default
             when Index :: index(),
                  Vector :: t(),
                  Default :: term(),
                  Value :: term().
-get(Index, Vector, _Default) when ?is_existing_index(Index, Vector) ->
-    fast_get(Index, Vector);
-get(_Index, _Vec, Default) ->
-    Default.
+get(Index, Vector, Default) when ?is_index(Index), ?is_vector(Vector) ->
+    case Index < Vector#steady_vector.count of
+        true -> fast_get(Index, Vector);
+        false -> Default
+    end;
+get(_Index, Vector, _Default) when ?is_vector(Vector) ->
+    ?arg_error;
+get(_Index, Vector, _Default) ->
+    ?vec_error(Vector).
 
 -spec find(Index, Vector) -> {ok, Value} | error
             when Index :: index(),
                  Vector :: t(),
                  Value :: term().
-find(Index, Vector) when ?is_existing_index(Index, Vector) ->
-    {ok, fast_get(Index, Vector)};
-find(_Index, _Vec) ->
-    error.
+find(Index, Vector) when ?is_index(Index), ?is_vector(Vector) ->
+    case Index < Vector#steady_vector.count of
+        true -> {ok, fast_get(Index, Vector)};
+        false -> error
+    end;
+find(_Index, Vector) when ?is_vector(Vector) ->
+    ?arg_error;
+find(_Index, Vector) ->
+    ?vec_error(Vector).
 
 -spec foldl(Fun, Acc0, Vector) -> AccN
             when Fun :: fun((Value, Acc1) -> Acc2),
@@ -122,9 +142,13 @@ find(_Index, _Vec) ->
                  Acc0 :: term(),
                  Vector :: t(),
                  AccN :: term().
-foldl(Fun, Acc0, Vector) ->
+foldl(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
     #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    foldl_root(Fun, Acc0, Root, Tail, Shift, 0).
+    foldl_root(Fun, Acc0, Root, Tail, Shift, 0);
+foldl(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
+    ?arg_error;
+foldl(_Fun, _Acc0, Vector) ->
+    ?vec_error(Vector).
 
 -spec foldr(Fun, Acc0, Vector) -> AccN
             when Fun :: fun((Value, Acc1) -> Acc2),
@@ -134,37 +158,51 @@ foldl(Fun, Acc0, Vector) ->
                  Acc0 :: term(),
                  Vector :: t(),
                  AccN :: term().
-foldr(Fun, Acc0, Vector) ->
+foldr(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
     #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    foldr_tail(Fun, Acc0, Tail, Root, Shift).
+    foldr_tail(Fun, Acc0, Tail, Root, Shift);
+foldr(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
+    ?arg_error;
+foldr(_Fun, _Acc0, Vector) ->
+    ?vec_error(Vector).
 
 -spec from_list(List) -> Vector
             when List :: list(),
                  Vector :: t().
-from_list(List) ->
-    lists:foldl(fun append/2, new(), List).
+from_list(List) when is_list(List) ->
+    lists:foldl(fun append/2, new(), List);
+from_list(_List) ->
+    ?arg_error.
 
 -spec is_empty(Vector) -> boolean()
             when Vector :: t().
+is_empty(Vector) when ?is_vector(Vector) ->
+    Vector#steady_vector.count =:= 0;
 is_empty(Vector) ->
-    Vector#steady_vector.count =:= 0.
+    ?vec_error(Vector).
 
 -spec last(Vector) -> Value | no_return()
             when Vector :: t(),
                  Value :: term().
-last(#steady_vector{ count = Count } = Vector) when Count > 0 ->
-    fast_get(Count - 1, Vector);
-last(_Vec) ->
-    error(badarg).
+last(#steady_vector{ count = Count } = Vector) ->
+    case Count > 0 of
+        true -> fast_get(Count - 1, Vector);
+        false -> ?empty_vec_error(Vector)
+    end;
+last(Vector) ->
+    ?vec_error(Vector).
 
 -spec last(Vector, Default) -> Value | Default
             when Vector :: t(),
                  Default :: term(),
                  Value :: term().
-last(#steady_vector{ count = Count } = Vector, _Default) when Count > 0 ->
-    fast_get(Count - 1, Vector);
-last(_Vec, Default) ->
-    Default.
+last(#steady_vector{ count = Count } = Vector, Default) ->
+    case Count > 0 of
+        true -> fast_get(Count - 1, Vector);
+        false -> Default
+    end;
+last(Vector, _Default) ->
+    ?vec_error(Vector).
 
 -spec new() -> Vector
             when Vector :: t().
@@ -193,8 +231,8 @@ remove_last(#steady_vector{ count = Count } = Vector) when Count > 1 ->
     end;
 remove_last(#steady_vector{ count = 1 }) ->
     new();
-remove_last(_Vec) ->
-    error(badarg).
+remove_last(Vector) ->
+    ?vec_error(Vector).
 
 -spec set(Index, Value, Vector1) -> Vector2 | no_return()
             when Index :: index(),
@@ -215,13 +253,17 @@ set(Index, Value, Vector) when ?is_existing_index(Index, Vector) ->
     end;
 set(Index, Value, Vector) when ?is_new_index(Index, Vector) ->
     append(Value, Vector);
-set(_Index, _Value, _Vec) ->
-    error(badarg).
+set(_Index, _Value, Vector) when ?is_vector(Vector) ->
+    ?arg_error;
+set(_Index, _Value, Vector) ->
+    ?vec_error(Vector).
 
 -spec size(Vector) -> non_neg_integer()
             when Vector :: t().
+size(#steady_vector{ count = Count }) ->
+    Count;
 size(Vector) ->
-    Vector#steady_vector.count.
+    ?vec_error(Vector).
 
 -spec to_list(Vector) -> list()
             when Vector :: t().
@@ -409,7 +451,7 @@ empty_test() ->
     ?assertEqual(0, ?MODULE:size(Vec)),
     ?assertEqual(it_is_empty, ?MODULE:last(Vec, it_is_empty)),
     ?assertError(badarg, ?MODULE:get(0, Vec)),
-    ?assertError(badarg, ?MODULE:last(Vec)),
+    ?assertError(emptyvec, ?MODULE:last(Vec)),
     ?assertEqual(not_found, ?MODULE:get(1, Vec, not_found)),
     ?assertEqual(error, ?MODULE:find(1, Vec)).
 
@@ -471,7 +513,7 @@ remove_last_root_test() ->
              Vec1, lists:seq(C - 1, 0, -1)),
 
     ?assertEqual(0, ?MODULE:size(Vec2)),
-    ?assertError(badarg, ?MODULE:remove_last(Vec2)).
+    ?assertError({badvec,Vec2}, ?MODULE:remove_last(Vec2)).
 
 set_tail_test() ->
     Vec1 = assert_element_identity(
