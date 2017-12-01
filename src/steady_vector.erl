@@ -46,7 +46,9 @@
 %% ------------------------------------------------------------------
 
 -type shift() :: pos_integer().
+
 -type index() :: non_neg_integer().
+-export_type([index/0]).
 
 -record(steady_vector, {
           count = 0 :: index(),
@@ -55,6 +57,7 @@
           tail = {} :: tuple()
          }).
 -type t() :: #steady_vector{}.
+-export_type([t/0]).
 
 %% ------------------------------------------------------------------
 %% API Function Definitions
