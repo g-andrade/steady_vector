@@ -250,16 +250,29 @@ last(Vector, _Default) ->
     ?vec_error(Vector).
 
 -spec map(Fun, Vector1) -> Vector2
-            when Fun :: fun((Index, Term1) -> Term2),
+            when Fun :: ValueFun | PairFun,
+                 ValueFun :: fun((Value1) -> Value2),
+                 PairFun :: fun((Index, Value1) -> Value2),
                  Index :: index(),
-                 Term1 :: term(),
-                 Term2 :: term(),
+                 Value1 :: term(),
+                 Value2 :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
-map(Fun, Vector1) ->
+map(Fun, Vector) when is_function(Fun, 1), ?is_vector(Vector) ->
     map_leaf_blocks(
       fun (Block) -> tuple_map(Fun, Block) end,
-      Vector1).
+      Vector);
+map(Fun, Vector) when is_function(Fun, 2) ->
+    foldl(
+      fun (Index, Value, Acc) ->
+              MappedValue = Fun(Index, Value),
+              append(MappedValue, Acc)
+      end,
+      new(), Vector);
+map(_Fun, Vector) when ?is_vector(Vector) ->
+    ?arg_error;
+map(_Fun, Vector) ->
+    ?vec_error(Vector).
 
 -spec new() -> Vector
             when Vector :: t().
@@ -745,11 +758,28 @@ pair_foldr_test() ->
 
 map_test() ->
     C = 1000,
-    MapFun = fun ({V, Index}) -> {V, Index} end,
+    MapFun = fun ({V, Index}) -> {V * 2, Index} end,
     List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
     MappedList = lists:map(MapFun, List),
     MappedVec = ?MODULE:map(MapFun, Vec),
+    ?MODULE:foldl(
+       fun (VecValue, [ListValue | Next]) ->
+               ?assertEqual(VecValue, ListValue),
+               Next
+       end,
+       MappedList, MappedVec).
+
+pair_map_test() ->
+    C = 1000,
+    ListMapFun = fun ({V, Index}) -> {V * 2, Index} end,
+    VecMapFun = fun (Index, Value) ->
+                        ListMapFun(Value)
+                end,
+    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    MappedList = lists:map(ListMapFun, List),
+    MappedVec = ?MODULE:map(VecMapFun, Vec),
     ?MODULE:foldl(
        fun (VecValue, [ListValue | Next]) ->
                ?assertEqual(VecValue, ListValue),
