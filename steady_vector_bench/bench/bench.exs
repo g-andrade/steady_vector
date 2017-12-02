@@ -6,6 +6,7 @@ only =
 
 full  = Enum.member?(System.argv, "full")
 quick = Enum.member?(System.argv, "quick")
+quickest = Enum.member?(System.argv, "quickest")
 parallel = Enum.member?(System.argv, "parallel")
 
 defmodule Runner do
@@ -13,7 +14,7 @@ defmodule Runner do
 
   @opts  [
     warmup: 2,
-    time: (if quick, do: 3, else: 10),
+    time: (if quickest, do: 0.1, else: (if quick, do: 3, else: 10)),
     print: @print_opts,
     parallel: (if parallel, do: :erlang.system_info(:schedulers_online), else: 1)
     # formatters: [
@@ -50,20 +51,25 @@ defmodule Runner do
 end
 
 inputs =
-  if full do
-    %{
-      "       10" => 0 ..        10,
-      "      100" => 0 ..       100,
-      "    1'000" => 0 ..     1_000,
-      "   10'000" => 0 ..    10_000,
-      "  100'000" => 0 ..   100_000,
-      "1'000'000" => 0 .. 1_000_000,
-    }
-  else
-    %{
-      "    1'000" => 0 ..     1_000,
-      "1'000'000" => 0 .. 1_000_000,
-    }
+  cond do
+    full ->
+      %{
+        "       10" => 0 ..        10,
+        "      100" => 0 ..       100,
+        "    1'000" => 0 ..     1_000,
+        "   10'000" => 0 ..    10_000,
+        "  100'000" => 0 ..   100_000,
+        "1'000'000" => 0 .. 1_000_000,
+      }
+    quickest ->
+      %{
+        "    1'000" => 0 ..     1_000
+      }
+    true ->
+      %{
+        "    1'000" => 0 ..     1_000,
+        "1'000'000" => 0 .. 1_000_000,
+      }
   end
 
 IO.puts :stderr, "Using #{Enum.count(inputs)} inputs"
