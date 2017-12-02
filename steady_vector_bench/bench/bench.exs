@@ -8,20 +8,19 @@ full  = Enum.member?(System.argv, "full")
 quick = Enum.member?(System.argv, "quick")
 quickest = Enum.member?(System.argv, "quickest")
 parallel = Enum.member?(System.argv, "parallel")
+generate_html = Enum.member?(System.argv, "html")
 
 defmodule Runner do
+  @datetime DateTime.to_string(DateTime.utc_now())
+  @generate_html generate_html
+
   @print_opts [benchmarking: false, fast_warning: false, configuration: false]
 
   @opts  [
     warmup: 2,
     time: (if quickest, do: 0.1, else: (if quick, do: 3, else: 10)),
     print: @print_opts,
-    parallel: (if parallel, do: :erlang.system_info(:schedulers_online), else: 1),
-    formatters: [
-      &Benchee.Formatters.HTML.output/1,
-      &Benchee.Formatters.Console.output/1
-    ]
-    #formatter_options: [html: [file: "html/bench.html"]],
+    parallel: (if parallel, do: :erlang.system_info(:schedulers_online), else: 1)
   ]
 
   IO.puts :stderr, "Time per test: #{Keyword.get(@opts, :time)} sec"
@@ -42,8 +41,18 @@ defmodule Runner do
           @opts
         end
 
-      report_path = :io_lib.format("html/~ts/~ts.html", [name, name])
-      opts = opts ++ [formatter_options: [html: [file: report_path]]]
+      opts =
+        if @generate_html do
+          report_path = :io_lib.format("html/~s/~ts/~ts.html", [@datetime, name, name])
+          opts ++ [formatter_options: [html: [file: report_path]],
+                   formatters: [
+                     &Benchee.Formatters.HTML.output/1,
+                     &Benchee.Formatters.Console.output/1
+                   ]]
+        else
+          opts
+        end
+
       Benchee.run(tests, opts)
     end
   end
