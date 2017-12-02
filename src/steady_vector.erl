@@ -4,7 +4,23 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--compile({no_auto_import,[{size,1}]}).
+-compile(
+   [{no_auto_import,[{size,1}]},
+    {inline, [{tail_start,1},
+              {tuple_append,2},
+              {tuple_foreach,2},
+              {tuple_delete,2},
+              {tuple_delete_last,1},
+              {tuple_foldl,3},
+              {tuple_foldl_recur,5},
+              {tuple_foldr,3},
+              {tuple_foldr_recur,5},
+              {tuple_foreach_recur,4},
+              {tuple_map,2},
+              {tuple_map_recur,5},
+              {tuple_get,2},
+              {tuple_set,3}]}
+   ]).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -17,6 +33,7 @@
 -export([find/2]).                  -ignore_xref({find,2}).
 -export([foldl/3]).                 -ignore_xref({foldl,3}).
 -export([foldr/3]).                 -ignore_xref({foldr,3}).
+-export([foreach/2]).               -ignore_xref({foreach,2}).
 -export([from_list/1]).             -ignore_xref({from_list,1}).
 -export([is_empty/1]).              -ignore_xref({is_empty,1}).
 -export([is_steady_vector/1]).      -ignore_xref({is_steady_vector,1}).
@@ -236,6 +253,29 @@ foldr(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
 foldr(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 foldr(_Fun, _Acc0, Vector) ->
+    ?vec_error(Vector).
+
+-spec foreach(Fun, Vector) -> ok
+            when Fun :: ValueFun | PairFun,
+                 ValueFun :: fun((Value) -> term()),
+                 PairFun :: fun((Index, Value) -> term()),
+                 Index :: index(),
+                 Value :: term(),
+                 Vector :: t().
+foreach(Fun, Vector) when is_function(Fun, 1), ?is_vector(Vector) ->
+    foreach_leaf_block(
+      fun (Block) -> tuple_foreach(Fun, Block) end,
+      Vector);
+foreach(Fun, Vector) when is_function(Fun, 2) ->
+    foldl(
+      fun (Index, Value, ok) ->
+              _ = Fun(Index, Value),
+              ok
+      end,
+      ok, Vector);
+foreach(_Fun, Vector) when ?is_vector(Vector) ->
+    ?arg_error;
+foreach(_Fun, Vector) ->
     ?vec_error(Vector).
 
 -spec from_list(List) -> Vector
@@ -478,6 +518,29 @@ foldr_parent_leaf_nodes(Fun, Acc0, ParentNode, Level) ->
       Acc0, ParentNode).
 
 %% ------------------------------------------------------------------
+%% Internal Function Definitions - Iterating
+%% ------------------------------------------------------------------
+
+foreach_leaf_block(Fun, Vector) ->
+    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
+    foreach_descendant_leaf_block(Fun, Root, Shift),
+    _ = Fun(Tail),
+    ok.
+
+foreach_descendant_leaf_block(Fun, Node, Level) ->
+    ChildrenLevel = Level - ?shift,
+    tuple_foreach(
+      fun (ChildNode) ->
+              foreach_node_leaf_block(Fun, ChildNode, ChildrenLevel)
+      end,
+      Node).
+
+foreach_node_leaf_block(Fun, Node, Level) when Level > 0 ->
+    foreach_descendant_leaf_block(Fun, Node, Level);
+foreach_node_leaf_block(Fun, Block, _Level) ->
+    Fun(Block).
+
+%% ------------------------------------------------------------------
 %% Internal Function Definitions - Mapping
 %% ------------------------------------------------------------------
 
@@ -538,27 +601,21 @@ set_recur(Leaf, _Level, Index, Val) ->
 %% Internal Function Definitions - Utilities
 %% ------------------------------------------------------------------
 
--compile({inline,{tail_start,1}}).
 tail_start(#steady_vector{} = Vector) ->
     Vector#steady_vector.count - tuple_size(Vector#steady_vector.tail).
 
--compile({inline,{tuple_append,2}}).
 tuple_append(Value, Tuple) ->
     erlang:append_element(Tuple, Value).
 
--compile({inline,{tuple_delete,2}}).
 tuple_delete(Index, Tuple) ->
     erlang:delete_element(Index + 1, Tuple).
 
--compile({inline,{tuple_delete_last,1}}).
 tuple_delete_last(Tuple) ->
     erlang:delete_element(tuple_size(Tuple), Tuple).
 
--compile({inline,{tuple_foldl,3}}).
 tuple_foldl(Fun, Acc0, Tuple) ->
     tuple_foldl_recur(Fun, Acc0, Tuple, 1, tuple_size(Tuple) + 1).
 
--compile({inline,{tuple_foldl_recur,5}}).
 tuple_foldl_recur(_Fun, AccN, _Tuple, Index, Limit) when Index =:= Limit ->
     AccN;
 tuple_foldl_recur(Fun, Acc1, Tuple, Index, Limit) ->
@@ -566,11 +623,9 @@ tuple_foldl_recur(Fun, Acc1, Tuple, Index, Limit) ->
     Acc2 = Fun(Value, Acc1),
     tuple_foldl_recur(Fun, Acc2, Tuple, Index + 1, Limit).
 
--compile({inline,{tuple_foldr,3}}).
 tuple_foldr(Fun, Acc0, Tuple) ->
     tuple_foldr_recur(Fun, Acc0, Tuple, tuple_size(Tuple), 0).
 
--compile({inline,{tuple_foldr_recur,5}}).
 tuple_foldr_recur(_Fun, AccN, _Tuple, Index, Limit) when Index =:= Limit ->
     AccN;
 tuple_foldr_recur(Fun, Acc1, Tuple, Index, Limit) ->
@@ -578,11 +633,19 @@ tuple_foldr_recur(Fun, Acc1, Tuple, Index, Limit) ->
     Acc2 = Fun(Value, Acc1),
     tuple_foldr_recur(Fun, Acc2, Tuple, Index - 1, Limit).
 
--compile({inline,{tuple_map,2}}).
+tuple_foreach(Fun, Tuple) ->
+    tuple_foreach_recur(Fun, Tuple, 1, tuple_size(Tuple) + 1).
+
+tuple_foreach_recur(_Fun, _Tuple, Index, Limit) when Index =:= Limit ->
+    ok;
+tuple_foreach_recur(Fun, Tuple, Index, Limit) ->
+    Value = element(Index, Tuple),
+    _ = Fun(Value),
+    tuple_foreach_recur(Fun, Tuple, Index + 1, Limit).
+
 tuple_map(Fun, Tuple) ->
     tuple_map_recur(Fun, Tuple, tuple_size(Tuple), 0, []).
 
--compile({inline,{tuple_map_recur,5}}).
 tuple_map_recur(_Fun, _Tuple, Index, Limit, Acc) when Index =:= Limit ->
     list_to_tuple(Acc);
 tuple_map_recur(Fun, Tuple, Index, Limit, Acc) ->
@@ -590,11 +653,9 @@ tuple_map_recur(Fun, Tuple, Index, Limit, Acc) ->
     MappedValue = Fun(Value),
     tuple_map_recur(Fun, Tuple, Index - 1, Limit, [MappedValue | Acc]).
 
--compile({inline,{tuple_get,2}}).
 tuple_get(Index, Tuple) ->
     element(Index + 1, Tuple).
 
--compile({inline,{tuple_set,3}}).
 tuple_set(Index, Value, Tuple) ->
     setelement(Index + 1, Tuple, Value).
 
@@ -819,6 +880,38 @@ pair_foldr_test() ->
                Next
        end,
        RevList, Vec).
+
+value_foreach_test() ->
+    C = 1000,
+    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    ProcDicKey = make_ref(),
+    undefined = put(ProcDicKey, List),
+    ?MODULE:foreach(
+       fun (Value) ->
+               [ListValue | Next] = get(ProcDicKey),
+               ?assertEqual(Value, ListValue),
+               put(ProcDicKey, Next)
+       end,
+       Vec),
+    erlang:put(ProcDicKey, undefined).
+
+pair_foreach_test() ->
+    C = 1000,
+    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    Vec = ?MODULE:from_list(List),
+    ProcDicKey = make_ref(),
+    undefined = put(ProcDicKey, List),
+    ?MODULE:foreach(
+       fun (Index, {Value, OrigIndex}) ->
+               [{ListValue, ListOrigIndex} | Next] = get(ProcDicKey),
+               ?assertEqual(Value, ListValue),
+               ?assertEqual(Index, OrigIndex - 1),
+               ?assertEqual(Index, ListOrigIndex - 1),
+               put(ProcDicKey, Next)
+       end,
+       Vec),
+    erlang:put(ProcDicKey, undefined).
 
 value_map_test() ->
     C = 1000,
