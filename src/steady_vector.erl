@@ -197,7 +197,7 @@ find(_Index, Vector) ->
                  Vector :: t(),
                  AccN :: term().
 foldl(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
-    foldl_leaf_nodes(
+    foldl_leaf_blocks(
       fun (Block, Acc) -> tuple_foldl(Fun, Acc, Block) end,
       Acc0, Vector);
 foldl(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
@@ -206,9 +206,10 @@ foldl(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
                 CallerAcc2 = Fun(IndexAcc, Value, CallerAcc1),
                 {IndexAcc + 1, CallerAcc2}
         end,
+
     LeafFoldAcc0 = {0, Acc0},
     {_Count, LeafFoldAccN} =
-        foldl_leaf_nodes(
+        foldl_leaf_blocks(
           fun (Block, LeafFoldAcc) ->
                   tuple_foldl(TupleFoldFun, LeafFoldAcc, Block)
           end,
@@ -232,7 +233,7 @@ foldl(_Fun, _Acc0, Vector) ->
                  Vector :: t(),
                  AccN :: term().
 foldr(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
-    foldr_leaf_nodes(
+    foldr_leaf_blocks(
       fun (Block, Acc) -> tuple_foldr(Fun, Acc, Block) end,
       Acc0, Vector);
 foldr(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
@@ -241,9 +242,10 @@ foldr(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
                 CallerAcc2 = Fun(IndexAcc, Value, CallerAcc1),
                 {IndexAcc - 1, CallerAcc2}
         end,
+
     LeafFoldAcc0 = {Vector#steady_vector.count - 1, Acc0},
     {_Count, LeafFoldAccN} =
-        foldr_leaf_nodes(
+        foldr_leaf_blocks(
           fun (Block, LeafFoldAcc) ->
                   tuple_foldr(TupleFoldFun, LeafFoldAcc, Block)
           end,
@@ -410,7 +412,7 @@ size(Vector) ->
 -spec to_list(Vector) -> list()
             when Vector :: t().
 to_list(Vector) ->
-    foldr_leaf_nodes(
+    foldr_leaf_blocks(
       fun (Block, Acc) ->
               tuple_to_list(Block) ++ Acc
       end,
@@ -465,57 +467,45 @@ get_recur(Leaf, _Level, _Index) ->
 %% Internal Function Definitions - Folding Left
 %% ------------------------------------------------------------------
 
-foldl_leaf_nodes(Fun, Acc0, Vector) ->
+foldl_leaf_blocks(Fun, Acc1, Vector) ->
     #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    foldl_leaf_nodes(Fun, Acc0, Root, Tail, Shift).
-
-foldl_leaf_nodes(Fun, Acc1, Root, Tail, Level) ->
-    Acc2 = foldl_root_leaf_nodes(Fun, Acc1, Root, Level),
+    Acc2 = foldl_descendant_leaf_blocks(Fun, Acc1, Root, Shift),
     Fun(Tail, Acc2).
 
-foldl_root_leaf_nodes(Fun, Acc, Root, Level) ->
-    foldl_parent_leaf_nodes(Fun, Acc, Root, Level).
-
-foldl_node_leaf_nodes(Fun, Acc, Node, Level) when Level > 0 ->
-    foldl_parent_leaf_nodes(Fun, Acc, Node, Level);
-foldl_node_leaf_nodes(Fun, Acc, Node, _Level) ->
-    Fun(Node, Acc).
-
-foldl_parent_leaf_nodes(Fun, Acc0, ParentNode, Level) ->
+foldl_descendant_leaf_blocks(Fun, Acc0, ParentNode, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_foldl(
       fun (Child, Acc) ->
-              foldl_node_leaf_nodes(Fun, Acc, Child, ChildrenLevel)
+              foldl_node_leaf_blocks(Fun, Acc, Child, ChildrenLevel)
       end,
       Acc0, ParentNode).
+
+foldl_node_leaf_blocks(Fun, Acc, Node, Level) when Level > 0 ->
+    foldl_descendant_leaf_blocks(Fun, Acc, Node, Level);
+foldl_node_leaf_blocks(Fun, Acc, Node, _Level) ->
+    Fun(Node, Acc).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Folding Right
 %% ------------------------------------------------------------------
 
-foldr_leaf_nodes(Fun, Acc0, Vector) ->
+foldr_leaf_blocks(Fun, Acc1, Vector) ->
     #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    foldr_leaf_nodes(Fun, Acc0, Root, Tail, Shift).
-
-foldr_leaf_nodes(Fun, Acc1, Root, Tail, Level) ->
     Acc2 = Fun(Tail, Acc1),
-    foldr_root_leaf_nodes(Fun, Acc2, Root, Level).
+    foldr_descendant_leaf_blocks(Fun, Acc2, Root, Shift).
 
-foldr_root_leaf_nodes(Fun, Acc, Root, Level) ->
-    foldr_parent_leaf_nodes(Fun, Acc, Root, Level).
-
-foldr_node_leaf_nodes(Fun, Acc, Node, Level) when Level > 0 ->
-    foldr_parent_leaf_nodes(Fun, Acc, Node, Level);
-foldr_node_leaf_nodes(Fun, Acc, Node, _Level) ->
-    Fun(Node, Acc).
-
-foldr_parent_leaf_nodes(Fun, Acc0, ParentNode, Level) ->
+foldr_descendant_leaf_blocks(Fun, Acc0, ParentNode, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_foldr(
       fun (Child, Acc) ->
-              foldr_node_leaf_nodes(Fun, Acc, Child, ChildrenLevel)
+              foldr_node_leaf_blocks(Fun, Acc, Child, ChildrenLevel)
       end,
       Acc0, ParentNode).
+
+foldr_node_leaf_blocks(Fun, Acc, Node, Level) when Level > 0 ->
+    foldr_descendant_leaf_blocks(Fun, Acc, Node, Level);
+foldr_node_leaf_blocks(Fun, Acc, Node, _Level) ->
+    Fun(Node, Acc).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Iterating
