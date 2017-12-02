@@ -23,7 +23,8 @@ defmodule SteadyVectorBench.Mixfile do
     [
       {:benchee, "0.11.0"},
       {:steady_vector, path: ".."},
-      {:persistent_vector, "0.1.4"}
+      {:persistent_vector, "0.1.4"},
+      {:benchee_html, "~> 0.4"}
     ]
   end
 end
