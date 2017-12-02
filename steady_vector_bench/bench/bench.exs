@@ -118,12 +118,30 @@ Runner.bench("Set",
   },
   data_inputs)
 
-  #Runner.bench("Enumerate",
-  #  %{
-  #  "Vector Enumerate" => fn %{vec: vec} -> Enum.each(vec, &(&1)) end,
-  #  "Map    Enumerate" => fn %{map: map} -> Enum.each(map, &(&1)) end,
-  #  },
-  #  data_inputs)
+valuefold_fun = fn (value, acc) -> rem(acc + value, 42) end
+pairfold_fun = fn (_index, value, acc) -> rem(acc + value, 42) end
+Runner.bench("Fold",
+  %{
+  "steady_vector foldl (value)" => fn %{vec: vec} -> :steady_vector.foldl(valuefold_fun, 0, vec) end,
+  "steady_vector foldr (value)" => fn %{vec: vec} -> :steady_vector.foldr(valuefold_fun, 0, vec) end,
+  "steady_vector foldl (pair)"  => fn %{vec: vec} -> :steady_vector.foldl(pairfold_fun, 0, vec) end,
+  "steady_vector foldr (pair)"  => fn %{vec: vec} -> :steady_vector.foldr(pairfold_fun, 0, vec) end,
+  "array         foldl (pair)"  => fn %{arr: arr} -> :array.foldl(pairfold_fun, 0, arr) end,
+  "array         foldr (pair)"  => fn %{arr: arr} -> :array.foldr(pairfold_fun, 0, arr) end,
+  "map           fold  (pair)"  => fn %{map: map} -> :maps.fold(pairfold_fun, 0, map) end
+  },
+  data_inputs)
+
+valuemap_fun = fn (value) -> value * 2 end
+pairmap_fun = fn (_index, value) -> value * 2 end
+Runner.bench("Map",
+  %{
+  "steady_vector map (value)" => fn %{vec: vec} -> :steady_vector.map(valuemap_fun, vec) end,
+  "steady_vector map (pair)"  => fn %{vec: vec} -> :steady_vector.map(pairmap_fun, vec) end,
+  "array         map (pair)"  => fn %{arr: arr} -> :array.map(pairmap_fun, arr) end,
+  "map           map (pair)"  => fn %{map: map} -> :maps.map(pairmap_fun, map) end
+  },
+  data_inputs)
 
 Runner.bench("Convert To List",
   %{
