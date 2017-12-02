@@ -22,7 +22,8 @@ defmodule SteadyVectorBench.Mixfile do
   defp deps do
     [
       {:benchee, "0.11.0"},
-      {:steady_vector, path: ".."}
+      {:steady_vector, path: ".."},
+      {:persistent_vector, "0.1.4"}
     ]
   end
 end
