@@ -40,8 +40,5 @@ test:
 cover: test
 	@$(REBAR3) as $(TEST_PROFILE) cover
 
-benchmark_quick:
-	make -C steady_vector_bench/ quick
-
-benchmark_full:
-	make -C steady_vector_bench/ full
+benchmark:
+	make -C steady_vector_bench/ run
