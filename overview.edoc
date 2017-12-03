@@ -49,7 +49,7 @@ And then run `mix deps.get'
 
 === Requirements ===
 
-The library has been tested on Erlang/OTP versions 17.5, 18.3, 19.{0..3}, and 20.{0..1}.
+The library has been tested on Erlang/OTP versions 17.5, 18.3, 19.{0..3}, and 20.{0..1}. The supported build tool is `rebar3'.
 
 === More info ===
 
