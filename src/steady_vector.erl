@@ -780,7 +780,7 @@ remove_last_root_test() ->
              Vec1, lists:seq(C - 1, 0, -1)),
 
     ?assertEqual(0, ?MODULE:size(Vec2)),
-    ?assertError({badvec,Vec2}, ?MODULE:remove_last(Vec2)).
+    ?assertError(emptyvec, ?MODULE:remove_last(Vec2)).
 
 set_tail_test() ->
     Vec1 = assert_element_identity(
