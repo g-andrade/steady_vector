@@ -849,7 +849,7 @@ set_root_test() ->
 
 from_and_to_list_test() ->
     C = 1000,
-    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    List = [{rand_compat:uniform(), Index} || Index <- lists:seq(1, C)],
 
     % convert from
     Vec = ?MODULE:from_list(List),
@@ -873,7 +873,7 @@ filter_test() ->
                         ?assertEqual(Index, OrigIndex - 1),
                         ListFilterFun(Value)
                    end,
-    List = [{rand:uniform(1000), Index} || Index <- lists:seq(1, C)],
+    List = [{rand_compat:uniform(1000), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
     FilteredList = lists:filter(ListFilterFun, List),
     FilteredVec = ?MODULE:filter(VecFilterFun, Vec),
@@ -886,7 +886,7 @@ filter_test() ->
 
 foldl_test() ->
     C = 1000,
-    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    List = [{rand_compat:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
     ?MODULE:foldl(
        fun (VecIndex, {VecValue, OrigVecIndex},
@@ -900,7 +900,7 @@ foldl_test() ->
 
 foldr_test() ->
     C = 1000,
-    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    List = [{rand_compat:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
     RevList = lists:reverse(List),
     ?MODULE:foldr(
@@ -915,7 +915,7 @@ foldr_test() ->
 
 foreach_test() ->
     C = 1000,
-    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    List = [{rand_compat:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
     ProcDicKey = make_ref(),
     undefined = put(ProcDicKey, List),
@@ -937,7 +937,7 @@ map_test() ->
                         ?assertEqual(Index, OrigIndex - 1),
                         ListMapFun(Value)
                 end,
-    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
+    List = [{rand_compat:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
     MappedList = lists:map(ListMapFun, List),
     MappedVec = ?MODULE:map(VecMapFun, Vec),
