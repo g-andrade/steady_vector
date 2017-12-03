@@ -61,7 +61,7 @@ And then run `mix deps.get`
 
 #### <a name="More_info">More info</a> ####
 
-See [benchmarks](https://github.com/g-andrade/steady_vector/blob/master/benchmarks/html/latest/)
+See [benchmarks](https://github.com/g-andrade/steady_vector/blob/master/benchmarks.md)
 
 See API reference indexed below.
 
