@@ -5,4 +5,4 @@ build:
 	mix deps.compile
 
 run:
-	mix run bench/bench.exs html
+	mix run bench/bench.exs

@@ -49,6 +49,6 @@ And then run `mix deps.get'
 
 === More info ===
 
-See [benchmarks](https://github.com/g-andrade/steady_vector/blob/master/benchmarks/html/latest/)
+See [benchmarks](https://github.com/g-andrade/steady_vector/blob/master/benchmarks.md)
 
 See API reference indexed below.

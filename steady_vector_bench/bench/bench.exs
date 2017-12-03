@@ -225,12 +225,11 @@ Runner.bench("Filter",
 
 Runner.bench("ConvertToList",
   %{
-  "steady_vector:to_list"    => fn %{vec: vec} -> vec |> :steady_vector.to_list() end,
-  "PersistentVector:to_list" => fn %{prv: prv} -> prv |> PersistentVector.to_list() end,
-  "array:to_list"            => fn %{arr: arr} -> arr |> :array.to_list() end,
-  "maps:to_list"             => fn %{map: map} -> map |> :maps.to_list() end,
-  "gb_trees:to_list"         => fn %{gbt: gbt} -> gbt |> :gb_trees.to_list() end,
-  "dict:to_list"             => fn %{dic: dic} -> dic |> :dict.to_list() end,
-  "orddict:to_list"          => fn %{ord: ord} -> ord |> :orddict.to_list() end,
+    "steady_vector:to_list"    => fn %{vec: vec} -> vec |> :steady_vector.to_list() end,
+    "PersistentVector:to_list" => fn %{prv: prv} -> prv |> PersistentVector.to_list() end,
+    "array:to_list"            => fn %{arr: arr} -> arr |> :array.to_list() end,
+    "maps:to_list"             => fn %{map: map} -> map |> :maps.to_list() end,
+    "gb_trees:to_list"         => fn %{gbt: gbt} -> gbt |> :gb_trees.to_list() end,
+    "dict:to_list"             => fn %{dic: dic} -> dic |> :dict.to_list() end,
   },
   data_inputs)
