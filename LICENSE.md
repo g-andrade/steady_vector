@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 
-Copyright (c) 2017 Dmitry Kakurin
+Copyright (c) 2017 Dmitry Kakurin  
 Copyright (c) 2017 Guilherme Andrade
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
