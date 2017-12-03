@@ -131,7 +131,7 @@ Runner.bench("Shrink",
     "maps:remove"                  => fn %{range: range, map: map} -> Enum.reduce(Enum.reverse(range), map, &:maps.remove/2) end,
     "gb_trees:delete"              => fn %{range: range, gbt: gbt} -> Enum.reduce(Enum.reverse(range), gbt, &:gb_trees.delete/2) end,
     "gb_trees:take_largest"        => fn %{range: range, gbt: gbt} -> Enum.reduce(Enum.reverse(range), gbt, fn _, gbt -> {_key, _value, gbt} = :gb_trees.take_largest(gbt); gbt end) end,
-    "dict:erase"                   => fn %{range: range, dic: dic} -> Enum.reduce(Enum.reverse(range), dic, &:dict.erase/2) end,
+    #"dict:erase"                   => fn %{range: range, dic: dic} -> Enum.reduce(Enum.reverse(range), dic, &:dict.erase/2) end, # too slow, takes forever to run
   },
   data_inputs)
 
@@ -154,7 +154,7 @@ Runner.bench("Set",
     "maps:put"             => fn %{range: range, map: map} -> Enum.reduce(range, map, &:maps.put(&1, &1 + 1, &2)) end,
     "maps:update"          => fn %{range: range, map: map} -> Enum.reduce(range, map, &:maps.update(&1, &1 + 1, &2)) end,
     "gb_trees:update"      => fn %{range: range, gbt: gbt} -> Enum.reduce(range, gbt, &:gb_trees.update(&1, &1 + 1, &2)) end,
-    "dict:store"           => fn %{range: range, dic: dic} -> Enum.reduce(range, dic, &:dict.store(&1, &1 + 1, &2)) end,
+    #"dict:store"           => fn %{range: range, dic: dic} -> Enum.reduce(range, dic, &:dict.store(&1, &1 + 1, &2)) end, # too slow, takes forever to run
   },
   data_inputs)
 
