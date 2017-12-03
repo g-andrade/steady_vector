@@ -12,7 +12,7 @@ endif
 
 TEST_PROFILE ?= test
 
-.PHONY: all build clean check dialyzer xref test cover
+.PHONY: all build clean check dialyzer xref test cover benchmark doc publish
 
 all: build
 
@@ -42,3 +42,9 @@ cover: test
 
 benchmark:
 	make -C steady_vector_bench/ run
+
+doc: build
+	./scripts/hackish_make_docs.sh
+
+publish:
+	@$(REBAR3) as publication hex publish

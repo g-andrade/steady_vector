@@ -1,0 +1,54 @@
+@title steady_vector
+@doc
+
+[![Build Status](https://travis-ci.org/g-andrade/steady_vector.png?branch=master)](https://travis-ci.org/g-andrade/steady_vector)
+[![Hex pm](http://img.shields.io/hexpm/v/steady_vector.svg?style=flat)](https://hex.pm/packages/steady_vector)
+
+== steady_vector - Persistent Vector for Erlang and Elixir ==
+
+=== Description ===
+
+`steady_vector' is an array-like collection of values indexed by contiguous 0-based integer index. It's heavily based on Dmitry Kakurin's [PersistentVector](https://github.com/Dimagog/persistent_vector) implementation for Elixir and, other than some idiomatic changes and a few new functions, `steady_vector''s interface is conceptually very similar.
+
+`steady_vector' optimizes the following operations:
+* Get element count
+* Lookup element by index
+* Update element by index
+* Adding new element to the end
+* Removing element from the end
+* Enumeration
+
+Get count operation is `O(1)', most others are `O(log32(N))'.
+
+`steady_vector' is implemented as a trie with 32-way branching at each level and uses *structural sharing* for updates.
+All ideas are borrowed directly from `PersistentVector', which in turn borrowed them from [Clojure](http://hypirion.com/musings/understanding-persistent-vector-pt-1).
+
+=== Installation (Erlang) ===
+
+Add `steady_vector' to your list of dependencies in `rebar.config':
+
+<pre lang="erlang">
+{deps,
+ [{steady_vector, "1.0.0"}
+ ]}.
+</pre>
+And then run `rebar3 compile'
+
+=== Installation (Elixir) ===
+
+Add `steady_vector' to your list of dependencies in `mix.exs':
+
+<pre lang="elixir">
+def deps do
+[
+  {:steady_vector, "~> 1.0.0"}
+]
+end
+</pre>
+And then run `mix deps.get'
+
+=== More info ===
+
+See [benchmarks](https://github.com/g-andrade/steady_vector/blob/master/benchmarks/html/latest/)
+
+See API reference indexed below.

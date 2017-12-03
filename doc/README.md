@@ -70,5 +70,5 @@ See API reference indexed below.
 
 
 <table width="100%" border="0" summary="list of modules">
-<tr><td><a href="https://github.com/g-andrade/steady_vector/blob/master/doc/steady_vector.md" class="module">steady_vector</a></td></tr></table>
+<tr><td><a href="steady_vector.md" class="module">steady_vector</a></td></tr></table>
 

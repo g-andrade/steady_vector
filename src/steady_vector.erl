@@ -53,8 +53,6 @@
 -define(vec_error(Vector), (error({badvec,Vector}))).
 -define(empty_vec_error, (error(emptyvec))).
 
--define(inline(F,A), compile({inline, {F,A}})).
-
 %% ------------------------------------------------------------------
 %% Record and Type Definitions
 %% ------------------------------------------------------------------
@@ -81,6 +79,10 @@
             when Value :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
+%% @doc Appends `Value' to the end of `Vector'
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @see set/3
+%% @returns Modified `Vector'
 append(Value, #steady_vector{ tail = Tail } = Vector) when tuple_size(Tail) < ?block_size ->
     Vector#steady_vector{
       count = Vector#steady_vector.count + 1,
@@ -105,6 +107,11 @@ append(_NewValue, Vector) ->
             when Index :: index(),
                  Vector :: t(),
                  Value :: term().
+%% @doc Returns value of element in `Vector' at `0'-based `Index'.
+%% `Index' must be an integer and satisfy condition `0 =< Index =< size(Vector)' or a `badarg' error will be raised.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @see get/3
+%% @see find/2
 get(Index, Vector) when ?is_existing_index(Index, Vector) ->
     fast_get(Index, Vector);
 get(_Index, Vector) when ?is_vector(Vector) ->
@@ -112,6 +119,11 @@ get(_Index, Vector) when ?is_vector(Vector) ->
 get(_Index, Vector) ->
     ?vec_error(Vector).
 
+%% @doc Returns value of element in `Vector' at `0'-based `Index' or `Default' if `Index >= size(Vector)'.
+%% `Index' must be a non-negative integer or a `badarg' error will be raised.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @see get/2
+%% @see find/2
 -spec get(Index, Vector, Default) -> Value | Default
             when Index :: index(),
                  Vector :: t(),
@@ -127,6 +139,10 @@ get(_Index, Vector, _Default) when ?is_vector(Vector) ->
 get(_Index, Vector, _Default) ->
     ?vec_error(Vector).
 
+%% @doc Filters `Vector' elements using predicate `Fun'.
+%% `Fun' must be an arity-2 function or a `badarg' error will be raised.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @returns The modified vector containing the filtered elements.
 -spec filter(Fun, Vector1) -> Vector2
             when Fun :: fun((Index, Value) -> boolean()),
                  Index :: index(),
@@ -147,6 +163,12 @@ filter(_Fun, Vector) when ?is_vector(Vector) ->
 filter(_Fun, Vector) ->
     ?vec_error(Vector).
 
+%% @doc Returns success-wrapped value of element in `Vector' at `0'-based `Index',
+%% or `error' if the index is too large.
+%% `Index' must be a non-negative integer or a `badarg' error will be raised.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @see get/2
+%% @see get/3
 -spec find(Index, Vector) -> {ok, Value} | error
             when Index :: index(),
                  Vector :: t(),
@@ -161,12 +183,18 @@ find(_Index, Vector) when ?is_vector(Vector) ->
 find(_Index, Vector) ->
     ?vec_error(Vector).
 
+%% @doc Calls `Fun(Index, Value, AccIn)' on successive elements of `Vector', starting with AccIn == Acc0.
+%% `Fun/3' must return a new accumulator, which is passed to the next call.
+%% The function returns the final value of the accumulator. `Acc0' is returned if the vector is empty.
+%% `Fun' must be an arity-3 function or a `badarg' error will be raised.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @see foldr/3
 -spec foldl(Fun, Acc0, Vector) -> AccN
-            when Fun :: fun((Index, Value, Acc1) -> Acc2),
+            when Fun :: fun((Index, Value, AccIn) -> AccOut),
                  Index :: index(),
                  Value :: term(),
-                 Acc1 :: Acc0 | Acc2,
-                 Acc2 :: term() | AccN,
+                 AccIn :: Acc0 | AccOut,
+                 AccOut :: term() | AccN,
                  Acc0 :: term(),
                  Vector :: t(),
                  AccN :: term().
@@ -177,6 +205,8 @@ foldl(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
 foldl(_Fun, _Acc0, Vector) ->
     ?vec_error(Vector).
 
+%% @doc Like `foldl/3' but `Vector' is traversed from right to left.
+%% @see foldl/3
 -spec foldr(Fun, Acc0, Vector) -> AccN
             when Fun :: fun((Index, Value, Acc1) -> Acc2),
                  Index :: index(),
@@ -193,6 +223,11 @@ foldr(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
 foldr(_Fun, _Acc0, Vector) ->
     ?vec_error(Vector).
 
+%% @doc Calls `Fun(Index, Value)' for each `Value' in `Vector'.
+%% This function is used for its side effects and the evaluation order
+%% is defined to be the same as the order of the elements in the vector.
+%% `Fun' must be an arity-2 function or a `badarg' error will be raised.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
 -spec foreach(Fun, Vector) -> ok
             when Fun :: fun((Index, Value) -> term()),
                  Index :: index(),
@@ -205,6 +240,9 @@ foreach(_Fun, Vector) when ?is_vector(Vector) ->
 foreach(_Fun, Vector) ->
     ?vec_error(Vector).
 
+%% @doc Converts a proper `List' of elements to a `Vector' containing them in the same order.
+%% `List' must be a list or a `{badvec,Vector}' error will be raised.
+%% @see to_list/1
 -spec from_list(List) -> Vector
             when List :: list(),
                  Vector :: t().
@@ -213,6 +251,9 @@ from_list(List) when is_list(List) ->
 from_list(_List) ->
     ?arg_error.
 
+%% @doc Returns `true' if `Vector' is empty, `false' otherwise.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @see size/1
 -spec is_empty(Vector) -> boolean()
             when Vector :: t().
 is_empty(Vector) when ?is_vector(Vector) ->
@@ -220,11 +261,15 @@ is_empty(Vector) when ?is_vector(Vector) ->
 is_empty(Vector) ->
     ?vec_error(Vector).
 
+%% @doc Returns `true' if `Term' is a `steady_vector', `false' otherwise.
 -spec is_steady_vector(Term) -> boolean()
             when Term :: term().
 is_steady_vector(Term) ->
     ?is_vector(Term).
 
+%% @doc Returns the last value of a non-empty `Vector'.
+%% If `Vector' is empty, an `emptyvec' error will be raised.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
 -spec last(Vector) -> Value | no_return()
             when Vector :: t(),
                  Value :: term().
@@ -236,6 +281,8 @@ last(#steady_vector{ count = Count } = Vector) ->
 last(Vector) ->
     ?vec_error(Vector).
 
+%% @doc Returns the last value `Vector' if it's not empty, `Default' otherwise.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
 -spec last(Vector, Default) -> Value | Default
             when Vector :: t(),
                  Default :: term(),
@@ -248,6 +295,9 @@ last(#steady_vector{ count = Count } = Vector, Default) ->
 last(Vector, _Default) ->
     ?vec_error(Vector).
 
+%% @doc Maps function `Fun(Index, Value)' to all values of vector `Vector'.
+%% Returns a new vector containing the mapped values.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
 -spec map(Fun, Vector1) -> Vector2
             when Fun :: fun((Index, Value1) -> Value2),
                  Index :: index(),
@@ -262,11 +312,15 @@ map(_Fun, Vector) when ?is_vector(Vector) ->
 map(_Fun, Vector) ->
     ?vec_error(Vector).
 
+%% @doc Returns an empty vector.
 -spec new() -> Vector
             when Vector :: t().
 new() ->
     #steady_vector{}.
 
+%% @doc Removes the last value of non-empty `Vector1' and returns `Vector2' with the element removed.
+%% If `Vector' is empty, an `emptyvec' error will be raised.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
 -spec remove_last(Vector1) -> Vector2 | no_return()
             when Vector1 :: t(),
                  Vector2 :: t().
@@ -289,9 +343,17 @@ remove_last(#steady_vector{ count = Count } = Vector) when Count > 1 ->
     end;
 remove_last(#steady_vector{ count = 1 }) ->
     new();
+remove_last(Vector) when ?is_vector(Vector) ->
+    ?empty_vec_error;
 remove_last(Vector) ->
     ?vec_error(Vector).
 
+%% @doc Returns updated `Vector2' with element at `0'-based `Index' set to `Value'.
+%% `Index' must be an integer and satisfy condition `0 =< Index < size(Vector)'
+%% or a `badarg' error will be raised. If `Index' equals `size(Vector)', this
+%% function will behave like append/2.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @see append/2
 -spec set(Index, Value, Vector1) -> Vector2 | no_return()
             when Index :: index(),
                  Value :: term(),
@@ -316,6 +378,9 @@ set(_Index, _Value, Vector) when ?is_vector(Vector) ->
 set(_Index, _Value, Vector) ->
     ?vec_error(Vector).
 
+%% @doc Returns number of elements in `Vector'.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @see is_empty/1
 -spec size(Vector) -> non_neg_integer()
             when Vector :: t().
 size(#steady_vector{ count = Count }) ->
@@ -323,6 +388,9 @@ size(#steady_vector{ count = Count }) ->
 size(Vector) ->
     ?vec_error(Vector).
 
+%% @doc Returns list with `Vector''s elements in the same order.
+%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%% @see from_list/1
 -spec to_list(Vector) -> list()
             when Vector :: t().
 to_list(Vector) ->
@@ -537,84 +605,84 @@ set_recur(Leaf, _Level, Index, Val) ->
 tail_start(#steady_vector{} = Vector) ->
     Vector#steady_vector.count - tuple_size(Vector#steady_vector.tail).
 
--?inline(tuple_append,2).
+-compile({inline,{tuple_append,2}}).
 tuple_append(Value, Tuple) ->
     erlang:append_element(Tuple, Value).
 
--?inline(tuple_delete,2).
+-compile({inline,{tuple_delete,2}}).
 tuple_delete(Index, Tuple) ->
     erlang:delete_element(Index + 1, Tuple).
 
--?inline(tuple_delete_last,1).
+-compile({inline,{tuple_delete_last,1}}).
 tuple_delete_last(Tuple) ->
     erlang:delete_element(tuple_size(Tuple), Tuple).
 
--?inline(tuple_get,2).
+-compile({inline,{tuple_get,2}}).
 tuple_get(Index, Tuple) ->
     element(Index + 1, Tuple).
 
--?inline(tuple_foldl,3).
+-compile({inline,{tuple_foldl,3}}).
 tuple_foldl(Fun, Acc, Tuple) ->
     lists:foldl(Fun, Acc, tuple_to_list(Tuple)).
 
--?inline(tuple_foldl,4).
+-compile({inline,{tuple_foldl,4}}).
 tuple_foldl(Fun, Counter, Acc, Tuple) ->
     List = tuple_to_list(Tuple),
     tuple_foldl_recur(Fun, Counter, Acc, List).
 
--?inline(tuple_foldl_recur,4).
+-compile({inline,{tuple_foldl_recur,4}}).
 tuple_foldl_recur(_Fun, Counter, Acc, []) ->
     {Counter, Acc};
 tuple_foldl_recur(Fun, Counter1, Acc1, [H|T]) ->
     {Counter2, Acc2} = Fun(H, Counter1, Acc1),
     tuple_foldl_recur(Fun, Counter2, Acc2, T).
 
--?inline(tuple_countfoldl,4).
+-compile({inline,{tuple_countfoldl,4}}).
 tuple_countfoldl(Fun, Counter, Acc, Tuple) ->
     List = tuple_to_list(Tuple),
     tuple_countfoldl_recur(Fun, Counter, Acc, List).
 
--?inline(tuple_countfoldl_recur,4).
+-compile({inline,{tuple_countfoldl_recur,4}}).
 tuple_countfoldl_recur(_Fun, Counter, Acc, []) ->
     {Counter, Acc};
 tuple_countfoldl_recur(Fun, Counter, Acc1, [H|T]) ->
     Acc2 = Fun(Counter, H, Acc1),
     tuple_countfoldl_recur(Fun, Counter + 1, Acc2, T).
 
--?inline(tuple_foldr,3).
+-compile({inline,{tuple_foldr,3}}).
 tuple_foldr(Fun, Acc, Tuple) ->
     lists:foldr(Fun, Acc, tuple_to_list(Tuple)).
 
--?inline(tuple_foldr,4).
+-compile({inline,{tuple_foldr,4}}).
 tuple_foldr(Fun, Counter, Acc, Tuple) ->
     List = lists:reverse(tuple_to_list(Tuple)),
     tuple_foldr_recur(Fun, Counter, Acc, List).
 
--?inline(tuple_foldr_recur,4).
+-compile({inline,{tuple_foldr_recur,4}}).
 tuple_foldr_recur(_Fun, Counter, Acc, []) ->
     {Counter, Acc};
 tuple_foldr_recur(Fun, Counter1, Acc1, [H|T]) ->
     {Counter2, Acc2} = Fun(H, Counter1, Acc1),
     tuple_foldr_recur(Fun, Counter2, Acc2, T).
 
--?inline(tuple_countfoldr,4).
+-compile({inline,{tuple_countfoldr,4}}).
 tuple_countfoldr(Fun, Counter, Acc, Tuple) ->
     List = lists:reverse(tuple_to_list(Tuple)),
     tuple_countfoldr_recur(Fun, Counter, Acc, List).
 
--?inline(tuple_countfoldr_recur,4).
+-compile({inline,{tuple_countfoldr_recur,4}}).
 tuple_countfoldr_recur(_Fun, Counter, Acc, []) ->
     {Counter, Acc};
 tuple_countfoldr_recur(Fun, Counter, Acc1, [H|T]) ->
     Acc2 = Fun(Counter, H, Acc1),
     tuple_countfoldr_recur(Fun, Counter - 1, Acc2, T).
 
--?inline(tuple_map,3).
+-compile({inline,{tuple_map,3}}).
 tuple_map(Fun, Counter, Tuple) ->
     List = tuple_to_list(Tuple),
     tuple_map_recur(Fun, Counter, List, []).
 
--?inline(tuple_map_recur,4).
+-compile({inline,{tuple_map_recur,4}}).
 tuple_map_recur(_Fun, Counter, [], Acc) ->
     Tuple = list_to_tuple(lists:reverse(Acc)),
     {Counter, Tuple};
@@ -622,12 +690,12 @@ tuple_map_recur(Fun, Counter1, [Value1 | T], Acc) ->
     {Counter2, Value2} = Fun(Counter1, Value1),
     tuple_map_recur(Fun, Counter2, T, [Value2 | Acc]).
 
--?inline(tuple_countmap,3).
+-compile({inline,{tuple_countmap,3}}).
 tuple_countmap(Fun, Counter, Tuple) ->
     List = tuple_to_list(Tuple),
     tuple_countmap_recur(Fun, Counter, List, []).
 
--?inline(tuple_countmap_recur,4).
+-compile({inline,{tuple_countmap_recur,4}}).
 tuple_countmap_recur(_Fun, Counter, [], Acc) ->
     {Counter, list_to_tuple(lists:reverse(Acc))};
 tuple_countmap_recur(Fun, Counter1, [Value1 | T], Acc) ->
@@ -635,7 +703,7 @@ tuple_countmap_recur(Fun, Counter1, [Value1 | T], Acc) ->
     Counter2 = Counter1 + 1,
     tuple_countmap_recur(Fun, Counter2, T, [Value2 | Acc]).
 
--?inline(tuple_set,3).
+-compile({inline,{tuple_set,3}}).
 tuple_set(Index, Value, Tuple) ->
     setelement(Index + 1, Tuple, Value).
 
