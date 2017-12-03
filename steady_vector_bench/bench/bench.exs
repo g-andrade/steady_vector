@@ -119,7 +119,10 @@ data_inputs =
         dic = Enum.reduce(range, :dict.new(), &:dict.store(&1, &1, &2))
         if dic |> :dict.size != range.last+1, do: raise "dict size didn't match"
 
-        {text, %{range: range, vec: vec, prv: prv, arr: arr, map: map, gbt: gbt, dic: dic}}
+        ord = Enum.reduce(range, [], &[{&1,&1} | &2]) |> :lists.reverse()
+        if ord |> :orddict.size != range.last+1, do: raise "orddice size didn't match"
+
+        {text, %{range: range, vec: vec, prv: prv, arr: arr, map: map, gbt: gbt, dic: dic, ord: ord}}
       end)
   |> Enum.into(%{})
 
@@ -169,6 +172,7 @@ Runner.bench("Fold",
     "array:foldr (pair)"                      => fn %{arr: arr} -> :array.foldr(pairfold_fun, 0, arr) end,
     "maps:fold (pair)"                        => fn %{map: map} -> :maps.fold(pairfold_fun, 0, map) end,
     "dict:fold (pair)"                        => fn %{dic: dic} -> :dict.fold(pairfold_fun, 0, dic) end,
+    "orddict:fold (pair)"                     => fn %{ord: ord} -> :orddict.fold(pairfold_fun, 0, ord) end,
   },
   data_inputs)
 
@@ -182,6 +186,7 @@ Runner.bench("Map",
     "maps:map (pair)"                      => fn %{map: map} -> :maps.map(pairmap_fun, map) end,
     "gb_trees:map (pair)"                  => fn %{gbt: gbt} -> :gb_trees.map(pairmap_fun, gbt) end,
     "dict:map (pair)"                      => fn %{dic: dic} -> :dict.map(pairmap_fun, dic) end,
+    "orddict:map (pair)"                   => fn %{ord: ord} -> :orddict.map(pairmap_fun, ord) end,
   },
   data_inputs)
 
@@ -193,5 +198,6 @@ Runner.bench("ConvertToList",
   "maps:to_list"             => fn %{map: map} -> map |> :maps.to_list() end,
   "gb_trees:to_list"         => fn %{gbt: gbt} -> gbt |> :gb_trees.to_list() end,
   "dict:to_list"             => fn %{dic: dic} -> dic |> :dict.to_list() end,
+  "orddict:to_list"          => fn %{ord: ord} -> ord |> :orddict.to_list() end,
   },
   data_inputs)
