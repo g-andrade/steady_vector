@@ -777,6 +777,20 @@ append_to_root_test() ->
     ?assertError(badarg, ?MODULE:get("hello", Vec2)),
     ?assertError(badarg, ?MODULE:get({1}, Vec2)).
 
+remove_all_test() ->
+    C = 1000,
+    List = lists:seq(1, C),
+    Vec = ?MODULE:from_list(List),
+    EmptyVec =
+        lists:foldr(
+          fun (Index, VecAcc) ->
+                  NewVecAcc = ?MODULE:remove_last(VecAcc),
+                  ?assertEqual(?MODULE:to_list(NewVecAcc), lists:seq(1, Index - 1)),
+                  NewVecAcc
+          end,
+          Vec, List),
+    ?assertError(emptyvec, ?MODULE:remove_last(EmptyVec)).
+
 remove_last_tail_test() ->
     Vec1 = ?MODULE:append(0, ?MODULE:new()),
     Vec1_R = ?MODULE:remove_last(Vec1),
