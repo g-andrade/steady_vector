@@ -4,23 +4,8 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--compile(
-   [{no_auto_import,[{size,1}]},
-    {inline, [{tail_start,1},
-              {tuple_append,2},
-              {tuple_foreach,2},
-              {tuple_delete,2},
-              {tuple_delete_last,1},
-              {tuple_foldl,3},
-              {tuple_foldl_recur,5},
-              {tuple_foldr,3},
-              {tuple_foldr_recur,5},
-              {tuple_foreach_recur,4},
-              {tuple_map,2},
-              {tuple_map_recur,5},
-              {tuple_get,2},
-              {tuple_set,3}]}
-   ]).
+-compile({no_auto_import,[{size,1}]}).
+-compile(inline_list_funcs).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -67,6 +52,8 @@
 -define(arg_error, (error(badarg))).
 -define(vec_error(Vector), (error({badvec,Vector}))).
 -define(empty_vec_error, (error(emptyvec))).
+
+-define(inline(F,A), compile({inline, {F,A}})).
 
 %% ------------------------------------------------------------------
 %% Record and Type Definitions
@@ -141,22 +128,11 @@ get(_Index, Vector, _Default) ->
     ?vec_error(Vector).
 
 -spec filter(Fun, Vector1) -> Vector2
-            when Fun :: ValueFun | PairFun,
-                 ValueFun :: fun ((Value) -> boolean()),
-                 PairFun :: fun((Index, Value) -> boolean()),
+            when Fun :: fun((Index, Value) -> boolean()),
                  Index :: index(),
                  Value :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
-filter(Fun, Vector) when is_function(Fun, 1) ->
-    foldl(
-      fun (Value, Acc) ->
-              case Fun(Value) of
-                  true -> append(Value, Acc);
-                  false -> Acc
-              end
-      end,
-      new(), Vector);
 filter(Fun, Vector) when is_function(Fun, 2) ->
     foldl(
       fun (Index, Value, Acc) ->
@@ -186,9 +162,7 @@ find(_Index, Vector) ->
     ?vec_error(Vector).
 
 -spec foldl(Fun, Acc0, Vector) -> AccN
-            when Fun :: ValueFun | PairFun,
-                 ValueFun :: fun((Value, Acc1) -> Acc2),
-                 PairFun :: fun((Index, Value, Acc1) -> Acc2),
+            when Fun :: fun((Index, Value, Acc1) -> Acc2),
                  Index :: index(),
                  Value :: term(),
                  Acc1 :: Acc0 | Acc2,
@@ -196,35 +170,15 @@ find(_Index, Vector) ->
                  Acc0 :: term(),
                  Vector :: t(),
                  AccN :: term().
-foldl(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
-    foldl_leaf_blocks(
-      fun (Block, Acc) -> tuple_foldl(Fun, Acc, Block) end,
-      Acc0, Vector);
 foldl(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
-    TupleFoldFun =
-        fun (Value, {IndexAcc, CallerAcc1}) ->
-                CallerAcc2 = Fun(IndexAcc, Value, CallerAcc1),
-                {IndexAcc + 1, CallerAcc2}
-        end,
-
-    LeafFoldAcc0 = {0, Acc0},
-    {_Count, LeafFoldAccN} =
-        foldl_leaf_blocks(
-          fun (Block, LeafFoldAcc) ->
-                  tuple_foldl(TupleFoldFun, LeafFoldAcc, Block)
-          end,
-          LeafFoldAcc0,
-          Vector),
-    LeafFoldAccN;
+    countfoldl_leaves(Fun, Acc0, Vector);
 foldl(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 foldl(_Fun, _Acc0, Vector) ->
     ?vec_error(Vector).
 
 -spec foldr(Fun, Acc0, Vector) -> AccN
-            when Fun :: ValueFun | PairFun,
-                 ValueFun :: fun((Value, Acc1) -> Acc2),
-                 PairFun :: fun((Index, Value, Acc1) -> Acc2),
+            when Fun :: fun((Index, Value, Acc1) -> Acc2),
                  Index :: index(),
                  Value :: term(),
                  Acc1 :: Acc0 | Acc2,
@@ -232,49 +186,20 @@ foldl(_Fun, _Acc0, Vector) ->
                  Acc0 :: term(),
                  Vector :: t(),
                  AccN :: term().
-foldr(Fun, Acc0, Vector) when is_function(Fun, 2), ?is_vector(Vector) ->
-    foldr_leaf_blocks(
-      fun (Block, Acc) -> tuple_foldr(Fun, Acc, Block) end,
-      Acc0, Vector);
 foldr(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
-    TupleFoldFun =
-        fun (Value, {IndexAcc, CallerAcc1}) ->
-                CallerAcc2 = Fun(IndexAcc, Value, CallerAcc1),
-                {IndexAcc - 1, CallerAcc2}
-        end,
-
-    LeafFoldAcc0 = {Vector#steady_vector.count - 1, Acc0},
-    {_Count, LeafFoldAccN} =
-        foldr_leaf_blocks(
-          fun (Block, LeafFoldAcc) ->
-                  tuple_foldr(TupleFoldFun, LeafFoldAcc, Block)
-          end,
-          LeafFoldAcc0,
-          Vector),
-    LeafFoldAccN;
+    countfoldr_leaves(Fun, Acc0, Vector);
 foldr(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 foldr(_Fun, _Acc0, Vector) ->
     ?vec_error(Vector).
 
 -spec foreach(Fun, Vector) -> ok
-            when Fun :: ValueFun | PairFun,
-                 ValueFun :: fun((Value) -> term()),
-                 PairFun :: fun((Index, Value) -> term()),
+            when Fun :: fun((Index, Value) -> term()),
                  Index :: index(),
                  Value :: term(),
                  Vector :: t().
-foreach(Fun, Vector) when is_function(Fun, 1), ?is_vector(Vector) ->
-    foreach_leaf_block(
-      fun (Block) -> tuple_foreach(Fun, Block) end,
-      Vector);
 foreach(Fun, Vector) when is_function(Fun, 2) ->
-    foldl(
-      fun (Index, Value, ok) ->
-              _ = Fun(Index, Value),
-              ok
-      end,
-      ok, Vector);
+    counteach_leaves(Fun, Vector);
 foreach(_Fun, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 foreach(_Fun, Vector) ->
@@ -324,25 +249,14 @@ last(Vector, _Default) ->
     ?vec_error(Vector).
 
 -spec map(Fun, Vector1) -> Vector2
-            when Fun :: ValueFun | PairFun,
-                 ValueFun :: fun((Value1) -> Value2),
-                 PairFun :: fun((Index, Value1) -> Value2),
+            when Fun :: fun((Index, Value1) -> Value2),
                  Index :: index(),
                  Value1 :: term(),
                  Value2 :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
-map(Fun, Vector) when is_function(Fun, 1), ?is_vector(Vector) ->
-    map_leaf_blocks(
-      fun (Block) -> tuple_map(Fun, Block) end,
-      Vector);
 map(Fun, Vector) when is_function(Fun, 2) ->
-    foldl(
-      fun (Index, Value, Acc) ->
-              MappedValue = Fun(Index, Value),
-              append(MappedValue, Acc)
-      end,
-      new(), Vector);
+    countmap_leaves(Fun, Vector);
 map(_Fun, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 map(_Fun, Vector) ->
@@ -413,9 +327,7 @@ size(Vector) ->
             when Vector :: t().
 to_list(Vector) ->
     foldr_leaf_blocks(
-      fun (Block, Acc) ->
-              tuple_to_list(Block) ++ Acc
-      end,
+      fun (Block, Acc) -> tuple_to_list(Block) ++ Acc end,
       [], Vector).
 
 %% ------------------------------------------------------------------
@@ -467,23 +379,26 @@ get_recur(Leaf, _Level, _Index) ->
 %% Internal Function Definitions - Folding Left
 %% ------------------------------------------------------------------
 
-foldl_leaf_blocks(Fun, Acc1, Vector) ->
+countfoldl_leaves(Fun, Acc1, Vector) ->
     #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    Acc2 = foldl_descendant_leaf_blocks(Fun, Acc1, Root, Shift),
-    Fun(Tail, Acc2).
+    Counter1 = 0,
+    {Counter2, Acc2} = countfoldl_descendant_leaf_blocks(Fun, Counter1, Acc1, Root, Shift),
+    {_Counter3, Acc3} = countfoldl_node_leaves(Fun, Counter2, Acc2, Tail),
+    Acc3.
 
-foldl_descendant_leaf_blocks(Fun, Acc0, ParentNode, Level) ->
+countfoldl_descendant_leaf_blocks(Fun, Counter, Acc, Node, Level) when Level =:= 0 ->
+    % leaf node
+    countfoldl_node_leaves(Fun, Counter, Acc, Node);
+countfoldl_descendant_leaf_blocks(Fun, Counter0, Acc0, Node, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_foldl(
-      fun (Child, Acc) ->
-              foldl_node_leaf_blocks(Fun, Acc, Child, ChildrenLevel)
+      fun (Child, Counter, Acc) ->
+              countfoldl_descendant_leaf_blocks(Fun, Counter, Acc, Child, ChildrenLevel)
       end,
-      Acc0, ParentNode).
+      Counter0, Acc0, Node).
 
-foldl_node_leaf_blocks(Fun, Acc, Node, Level) when Level > 0 ->
-    foldl_descendant_leaf_blocks(Fun, Acc, Node, Level);
-foldl_node_leaf_blocks(Fun, Acc, Node, _Level) ->
-    Fun(Node, Acc).
+countfoldl_node_leaves(Fun, Counter, Acc, Node) ->
+    tuple_countfoldl(Fun, Counter, Acc, Node).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Folding Right
@@ -494,64 +409,92 @@ foldr_leaf_blocks(Fun, Acc1, Vector) ->
     Acc2 = Fun(Tail, Acc1),
     foldr_descendant_leaf_blocks(Fun, Acc2, Root, Shift).
 
-foldr_descendant_leaf_blocks(Fun, Acc0, ParentNode, Level) ->
+foldr_descendant_leaf_blocks(Fun, Acc, Node, Level) when Level =:= ?shift ->
+    % leaf node
+    tuple_foldr(Fun, Acc, Node);
+foldr_descendant_leaf_blocks(Fun, Acc0, Node, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_foldr(
       fun (Child, Acc) ->
-              foldr_node_leaf_blocks(Fun, Acc, Child, ChildrenLevel)
+              foldr_descendant_leaf_blocks(Fun, Acc, Child, ChildrenLevel)
       end,
-      Acc0, ParentNode).
+      Acc0, Node).
 
-foldr_node_leaf_blocks(Fun, Acc, Node, Level) when Level > 0 ->
-    foldr_descendant_leaf_blocks(Fun, Acc, Node, Level);
-foldr_node_leaf_blocks(Fun, Acc, Node, _Level) ->
-    Fun(Node, Acc).
+countfoldr_leaves(Fun, Acc1, Vector) ->
+    #steady_vector{ count = Size, shift = Shift, root = Root, tail = Tail } = Vector,
+    Counter1 = Size - 1,
+    {Counter2, Acc2} = countfoldr_node_leaves(Fun, Counter1, Acc1, Tail),
+    {_Counter3, Acc3} = countfoldr_descendant_leaf_blocks(Fun, Counter2, Acc2, Root, Shift),
+    Acc3.
+
+countfoldr_descendant_leaf_blocks(Fun, Counter, Acc, Node, Level) when Level =:= 0 ->
+    % leaf node
+    countfoldr_node_leaves(Fun, Counter, Acc, Node);
+countfoldr_descendant_leaf_blocks(Fun, Counter0, Acc0, Node, Level) ->
+    ChildrenLevel = Level - ?shift,
+    tuple_foldr(
+      fun (Child, Counter, Acc) ->
+              countfoldr_descendant_leaf_blocks(Fun, Counter, Acc, Child, ChildrenLevel)
+      end,
+      Counter0, Acc0, Node).
+
+countfoldr_node_leaves(Fun, Counter, Acc, Node) ->
+    tuple_countfoldr(Fun, Counter, Acc, Node).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Iterating
 %% ------------------------------------------------------------------
 
-foreach_leaf_block(Fun, Vector) ->
+counteach_leaves(Fun, Vector) ->
     #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    foreach_descendant_leaf_block(Fun, Root, Shift),
-    _ = Fun(Tail),
+    Counter1 = 0,
+    Counter2 = counteach_descendant_leaf_blocks(Fun, Counter1, Root, Shift),
+    _Counter3 = counteach_node_leaves(Fun, Counter2, Tail),
     ok.
 
-foreach_descendant_leaf_block(Fun, Node, Level) ->
+counteach_descendant_leaf_blocks(Fun, Counter, Node, Level) when Level =:= 0 ->
+    % leaf node
+    counteach_node_leaves(Fun, Counter, Node);
+counteach_descendant_leaf_blocks(Fun, Counter0, Node, Level) ->
     ChildrenLevel = Level - ?shift,
-    tuple_foreach(
-      fun (ChildNode) ->
-              foreach_node_leaf_block(Fun, ChildNode, ChildrenLevel)
+    tuple_foldl(
+      fun (Child, Counter) ->
+              counteach_descendant_leaf_blocks(Fun, Counter, Child, ChildrenLevel)
       end,
-      Node).
+      Counter0, Node).
 
-foreach_node_leaf_block(Fun, Node, Level) when Level > 0 ->
-    foreach_descendant_leaf_block(Fun, Node, Level);
-foreach_node_leaf_block(Fun, Block, _Level) ->
-    Fun(Block).
+counteach_node_leaves(Fun, Counter0, Node) ->
+    tuple_foldl(
+      fun (Value, Counter) ->
+              _ = Fun(Counter, Value),
+              Counter + 1
+      end,
+      Counter0, Node).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Mapping
 %% ------------------------------------------------------------------
 
-map_leaf_blocks(Fun, Vector) ->
-    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
-    MappedTail = Fun(Tail),
-    MappedRoot = map_descendant_leaf_blocks(Fun, Root, Shift),
-    Vector#steady_vector{ root = MappedRoot, tail = MappedTail }.
+countmap_leaves(Fun, Vector) ->
+    #steady_vector{ shift = Shift, root = Root1, tail = Tail1 } = Vector,
+    Counter1 = 0,
+    {Counter2, Root2} = countmap_descendant_leaf_blocks(Fun, Counter1, Root1, Shift),
+    {_Counter3, Tail2} = countmap_node_leaves(Fun, Counter2, Tail1),
+    Vector#steady_vector{ root = Root2, tail = Tail2 }.
 
-map_descendant_leaf_blocks(Fun, Node, Level) ->
+countmap_descendant_leaf_blocks(Fun, Counter, Node, Level) when Level =:= 0 ->
+    % leaf node
+    countmap_node_leaves(Fun, Counter, Node);
+countmap_descendant_leaf_blocks(Fun, Counter0, Node, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_map(
-      fun (ChildNode) ->
-              map_node_leaf_blocks(Fun, ChildNode, ChildrenLevel)
+      fun (Counter, Child) ->
+              countmap_descendant_leaf_blocks(Fun, Counter, Child, ChildrenLevel)
       end,
-      Node).
+      Counter0, Node).
 
-map_node_leaf_blocks(Fun, Node, Level) when Level > 0 ->
-    map_descendant_leaf_blocks(Fun, Node, Level);
-map_node_leaf_blocks(Fun, Block, _Level) ->
-    Fun(Block).
+countmap_node_leaves(Fun, Counter0, Node) ->
+    tuple_countmap(Fun, Counter0, Node).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Removing
@@ -594,58 +537,105 @@ set_recur(Leaf, _Level, Index, Val) ->
 tail_start(#steady_vector{} = Vector) ->
     Vector#steady_vector.count - tuple_size(Vector#steady_vector.tail).
 
+-?inline(tuple_append,2).
 tuple_append(Value, Tuple) ->
     erlang:append_element(Tuple, Value).
 
+-?inline(tuple_delete,2).
 tuple_delete(Index, Tuple) ->
     erlang:delete_element(Index + 1, Tuple).
 
+-?inline(tuple_delete_last,1).
 tuple_delete_last(Tuple) ->
     erlang:delete_element(tuple_size(Tuple), Tuple).
 
-tuple_foldl(Fun, Acc0, Tuple) ->
-    tuple_foldl_recur(Fun, Acc0, Tuple, 1, tuple_size(Tuple) + 1).
-
-tuple_foldl_recur(_Fun, AccN, _Tuple, Index, Limit) when Index =:= Limit ->
-    AccN;
-tuple_foldl_recur(Fun, Acc1, Tuple, Index, Limit) ->
-    Value = element(Index, Tuple),
-    Acc2 = Fun(Value, Acc1),
-    tuple_foldl_recur(Fun, Acc2, Tuple, Index + 1, Limit).
-
-tuple_foldr(Fun, Acc0, Tuple) ->
-    tuple_foldr_recur(Fun, Acc0, Tuple, tuple_size(Tuple), 0).
-
-tuple_foldr_recur(_Fun, AccN, _Tuple, Index, Limit) when Index =:= Limit ->
-    AccN;
-tuple_foldr_recur(Fun, Acc1, Tuple, Index, Limit) ->
-    Value = element(Index, Tuple),
-    Acc2 = Fun(Value, Acc1),
-    tuple_foldr_recur(Fun, Acc2, Tuple, Index - 1, Limit).
-
-tuple_foreach(Fun, Tuple) ->
-    tuple_foreach_recur(Fun, Tuple, 1, tuple_size(Tuple) + 1).
-
-tuple_foreach_recur(_Fun, _Tuple, Index, Limit) when Index =:= Limit ->
-    ok;
-tuple_foreach_recur(Fun, Tuple, Index, Limit) ->
-    Value = element(Index, Tuple),
-    _ = Fun(Value),
-    tuple_foreach_recur(Fun, Tuple, Index + 1, Limit).
-
-tuple_map(Fun, Tuple) ->
-    tuple_map_recur(Fun, Tuple, tuple_size(Tuple), 0, []).
-
-tuple_map_recur(_Fun, _Tuple, Index, Limit, Acc) when Index =:= Limit ->
-    list_to_tuple(Acc);
-tuple_map_recur(Fun, Tuple, Index, Limit, Acc) ->
-    Value = element(Index, Tuple),
-    MappedValue = Fun(Value),
-    tuple_map_recur(Fun, Tuple, Index - 1, Limit, [MappedValue | Acc]).
-
+-?inline(tuple_get,2).
 tuple_get(Index, Tuple) ->
     element(Index + 1, Tuple).
 
+-?inline(tuple_foldl,3).
+tuple_foldl(Fun, Acc, Tuple) ->
+    lists:foldl(Fun, Acc, tuple_to_list(Tuple)).
+
+-?inline(tuple_foldl,4).
+tuple_foldl(Fun, Counter, Acc, Tuple) ->
+    List = tuple_to_list(Tuple),
+    tuple_foldl_recur(Fun, Counter, Acc, List).
+
+-?inline(tuple_foldl_recur,4).
+tuple_foldl_recur(_Fun, Counter, Acc, []) ->
+    {Counter, Acc};
+tuple_foldl_recur(Fun, Counter1, Acc1, [H|T]) ->
+    {Counter2, Acc2} = Fun(H, Counter1, Acc1),
+    tuple_foldl_recur(Fun, Counter2, Acc2, T).
+
+-?inline(tuple_countfoldl,4).
+tuple_countfoldl(Fun, Counter, Acc, Tuple) ->
+    List = tuple_to_list(Tuple),
+    tuple_countfoldl_recur(Fun, Counter, Acc, List).
+
+-?inline(tuple_countfoldl_recur,4).
+tuple_countfoldl_recur(_Fun, Counter, Acc, []) ->
+    {Counter, Acc};
+tuple_countfoldl_recur(Fun, Counter, Acc1, [H|T]) ->
+    Acc2 = Fun(Counter, H, Acc1),
+    tuple_countfoldl_recur(Fun, Counter + 1, Acc2, T).
+
+-?inline(tuple_foldr,3).
+tuple_foldr(Fun, Acc, Tuple) ->
+    lists:foldr(Fun, Acc, tuple_to_list(Tuple)).
+
+-?inline(tuple_foldr,4).
+tuple_foldr(Fun, Counter, Acc, Tuple) ->
+    List = lists:reverse(tuple_to_list(Tuple)),
+    tuple_foldr_recur(Fun, Counter, Acc, List).
+
+-?inline(tuple_foldr_recur,4).
+tuple_foldr_recur(_Fun, Counter, Acc, []) ->
+    {Counter, Acc};
+tuple_foldr_recur(Fun, Counter1, Acc1, [H|T]) ->
+    {Counter2, Acc2} = Fun(H, Counter1, Acc1),
+    tuple_foldr_recur(Fun, Counter2, Acc2, T).
+
+-?inline(tuple_countfoldr,4).
+tuple_countfoldr(Fun, Counter, Acc, Tuple) ->
+    List = lists:reverse(tuple_to_list(Tuple)),
+    tuple_countfoldr_recur(Fun, Counter, Acc, List).
+
+-?inline(tuple_countfoldr_recur,4).
+tuple_countfoldr_recur(_Fun, Counter, Acc, []) ->
+    {Counter, Acc};
+tuple_countfoldr_recur(Fun, Counter, Acc1, [H|T]) ->
+    Acc2 = Fun(Counter, H, Acc1),
+    tuple_countfoldr_recur(Fun, Counter - 1, Acc2, T).
+
+-?inline(tuple_map,3).
+tuple_map(Fun, Counter, Tuple) ->
+    List = tuple_to_list(Tuple),
+    tuple_map_recur(Fun, Counter, List, []).
+
+-?inline(tuple_map_recur,4).
+tuple_map_recur(_Fun, Counter, [], Acc) ->
+    Tuple = list_to_tuple(lists:reverse(Acc)),
+    {Counter, Tuple};
+tuple_map_recur(Fun, Counter1, [Value1 | T], Acc) ->
+    {Counter2, Value2} = Fun(Counter1, Value1),
+    tuple_map_recur(Fun, Counter2, T, [Value2 | Acc]).
+
+-?inline(tuple_countmap,3).
+tuple_countmap(Fun, Counter, Tuple) ->
+    List = tuple_to_list(Tuple),
+    tuple_countmap_recur(Fun, Counter, List, []).
+
+-?inline(tuple_countmap_recur,4).
+tuple_countmap_recur(_Fun, Counter, [], Acc) ->
+    {Counter, list_to_tuple(lists:reverse(Acc))};
+tuple_countmap_recur(Fun, Counter1, [Value1 | T], Acc) ->
+    Value2 = Fun(Counter1, Value1),
+    Counter2 = Counter1 + 1,
+    tuple_countmap_recur(Fun, Counter2, T, [Value2 | Acc]).
+
+-?inline(tuple_set,3).
 tuple_set(Index, Value, Tuple) ->
     setelement(Index + 1, Tuple, Value).
 
@@ -787,21 +777,7 @@ from_and_to_list_test() ->
           end,
           List, List2).
 
-value_filter_test() ->
-    C = 1000,
-    FilterFun  = fun ({V, _Index}) -> V band 1 =:= 0 end,
-    List = [{rand:uniform(1000), Index} || Index <- lists:seq(1, C)],
-    Vec = ?MODULE:from_list(List),
-    FilteredList = lists:filter(FilterFun, List),
-    FilteredVec = ?MODULE:filter(FilterFun, Vec),
-    ?MODULE:foldl(
-       fun (VecValue, [ListValue | Next]) ->
-               ?assertEqual(VecValue, ListValue),
-               Next
-       end,
-       FilteredList, FilteredVec).
-
-pair_filter_test() ->
+filter_test() ->
     C = 1000,
     ListFilterFun = fun ({V, _Index}) -> V band 1 =:= 0 end,
     VecFilterFun = fun (Index, {_, OrigIndex} = Value) ->
@@ -813,24 +789,13 @@ pair_filter_test() ->
     FilteredList = lists:filter(ListFilterFun, List),
     FilteredVec = ?MODULE:filter(VecFilterFun, Vec),
     ?MODULE:foldl(
-       fun (VecValue, [ListValue | Next]) ->
+       fun (_Index, VecValue, [ListValue | Next]) ->
                ?assertEqual(VecValue, ListValue),
                Next
        end,
        FilteredList, FilteredVec).
 
-value_foldl_test() ->
-    C = 1000,
-    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
-    Vec = ?MODULE:from_list(List),
-    ?MODULE:foldl(
-       fun (VecValue, [ListValue | Next]) ->
-               ?assertEqual(VecValue, ListValue),
-               Next
-       end,
-       List, Vec).
-
-pair_foldl_test() ->
+foldl_test() ->
     C = 1000,
     List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
@@ -844,19 +809,7 @@ pair_foldl_test() ->
        end,
        List, Vec).
 
-value_foldr_test() ->
-    C = 1000,
-    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
-    Vec = ?MODULE:from_list(List),
-    RevList = lists:reverse(List),
-    ?MODULE:foldr(
-       fun (VecValue, [ListValue | Next]) ->
-               ?assertEqual(VecValue, ListValue),
-               Next
-       end,
-       RevList, Vec).
-
-pair_foldr_test() ->
+foldr_test() ->
     C = 1000,
     List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
@@ -871,22 +824,7 @@ pair_foldr_test() ->
        end,
        RevList, Vec).
 
-value_foreach_test() ->
-    C = 1000,
-    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
-    Vec = ?MODULE:from_list(List),
-    ProcDicKey = make_ref(),
-    undefined = put(ProcDicKey, List),
-    ?MODULE:foreach(
-       fun (Value) ->
-               [ListValue | Next] = get(ProcDicKey),
-               ?assertEqual(Value, ListValue),
-               put(ProcDicKey, Next)
-       end,
-       Vec),
-    erlang:put(ProcDicKey, undefined).
-
-pair_foreach_test() ->
+foreach_test() ->
     C = 1000,
     List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
     Vec = ?MODULE:from_list(List),
@@ -903,21 +841,7 @@ pair_foreach_test() ->
        Vec),
     erlang:put(ProcDicKey, undefined).
 
-value_map_test() ->
-    C = 1000,
-    MapFun = fun ({V, Index}) -> {V * 2, Index} end,
-    List = [{rand:uniform(), Index} || Index <- lists:seq(1, C)],
-    Vec = ?MODULE:from_list(List),
-    MappedList = lists:map(MapFun, List),
-    MappedVec = ?MODULE:map(MapFun, Vec),
-    ?MODULE:foldl(
-       fun (VecValue, [ListValue | Next]) ->
-               ?assertEqual(VecValue, ListValue),
-               Next
-       end,
-       MappedList, MappedVec).
-
-pair_map_test() ->
+map_test() ->
     C = 1000,
     ListMapFun = fun ({V, Index}) -> {V * 2, Index} end,
     VecMapFun = fun (Index, {_, OrigIndex} = Value) ->
@@ -929,7 +853,7 @@ pair_map_test() ->
     MappedList = lists:map(ListMapFun, List),
     MappedVec = ?MODULE:map(VecMapFun, Vec),
     ?MODULE:foldl(
-       fun (VecValue, [ListValue | Next]) ->
+       fun (_Index, VecValue, [ListValue | Next]) ->
                ?assertEqual(VecValue, ListValue),
                Next
        end,

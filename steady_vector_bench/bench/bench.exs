@@ -162,8 +162,6 @@ valuefold_fun = fn (value, acc) -> rem(acc + value, 42) end
 pairfold_fun = fn (_index, value, acc) -> rem(acc + value, 42) end
 Runner.bench("Fold",
   %{
-    "steady_vector:foldl (value)"             => fn %{vec: vec} -> :steady_vector.foldl(valuefold_fun, 0, vec) end,
-    "steady_vector:foldr (value)"             => fn %{vec: vec} -> :steady_vector.foldr(valuefold_fun, 0, vec) end,
     "steady_vector:foldl (pair)"              => fn %{vec: vec} -> :steady_vector.foldl(pairfold_fun, 0, vec) end,
     "steady_vector:foldr (pair)"              => fn %{vec: vec} -> :steady_vector.foldr(pairfold_fun, 0, vec) end,
     "PersistentVector |> Enum.reduce (value)" => fn %{prv: prv} -> Enum.reduce(prv, 0, valuefold_fun) end,
@@ -178,7 +176,6 @@ valuemap_fun = fn (value) -> value * 2 end
 pairmap_fun = fn (_index, value) -> value * 2 end
 Runner.bench("Map",
   %{
-    "steady_vector:map (value)"            => fn %{vec: vec} -> :steady_vector.map(valuemap_fun, vec) end,
     "steady_vector:map (pair)"             => fn %{vec: vec} -> :steady_vector.map(pairmap_fun, vec) end,
     "PersistentVector |> Enum.map (value)" => fn %{prv: prv} -> Enum.map(prv, valuemap_fun) end,
     "array:map (pair)"                     => fn %{arr: arr} -> :array.map(pairmap_fun, arr) end,
