@@ -47,6 +47,10 @@ end
 </pre>
 And then run `mix deps.get'
 
+=== Requirements ===
+
+The library has been tested on Erlang/OTP versions 17.5, 18.3, 19.{0..3}, and 20.{0..1}.
+
 === More info ===
 
 See [benchmarks](https://github.com/g-andrade/steady_vector/blob/master/benchmarks.md)
