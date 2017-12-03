@@ -11,7 +11,7 @@
 
 #### <a name="Description">Description</a> ####
 
-`steady_vector` is an array-like collection of values indexed by contiguous 0-based integer index. It's heavily based on Dmitry Kakurin's [PersistentVector](https://github.com/Dimagog/persistent_vector) implementation for Elixir and, other than some idiomatic changes and a few new functions, `steady_vector`'s interface is conceptually very similar.
+`steady_vector` is an array-like collection of values indexed by contiguous 0-based integer index. It's heavily based on Dmitry Kakurin's [PersistentVector](https://github.com/Dimagog/persistent_vector) implementation for Elixir and, other than for some idiomatic changes and a few new functions, `steady_vector`'s interface is conceptually very similar.
 
 `steady_vector` optimizes the following operations:
 * Get element count
@@ -23,7 +23,7 @@
 
 Get count operation is `O(1)`, most others are `O(log32(N))`.
 
-`steady_vector` is implemented as a trie with 32-way branching at each level and uses *structural sharing* for updates.
+`steady_vector` is implemented as a tree with 32-way branching at each level and uses *structural sharing* for updates.
 All ideas are borrowed directly from `PersistentVector`, which in turn borrowed them from [Clojure](http://hypirion.com/musings/understanding-persistent-vector-pt-1).
 
 
@@ -50,7 +50,7 @@ Add `steady_vector` to your list of dependencies in `mix.exs`:
 
 def deps do
 [
-  {:steady_vector, "~> 1.0.0"}
+  {:steady_vector, "1.0.0"}
 ]
 end
 
