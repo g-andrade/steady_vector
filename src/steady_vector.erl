@@ -79,7 +79,7 @@
             when Value :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
-%% @doc Appends `Value' to the end of `Vector'
+%% @doc Appends `Value' to the end of `Vector'.
 %% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
 %% @see set/3
 %% @returns Modified `Vector'
