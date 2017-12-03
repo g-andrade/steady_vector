@@ -190,6 +190,18 @@ Runner.bench("Map",
   },
   data_inputs)
 
+valuefilter_fun = fn (value) -> rem(value, 2) == 0 end
+pairfilter_fun = fn (_index, value) -> rem(value, 2) == 0 end
+Runner.bench("Filter",
+  %{
+    "steady_vector:filter (pair)"             => fn %{vec: vec} -> :steady_vector.filter(pairfilter_fun, vec) end,
+    "PersistentVector |> Enum.filter (value)" => fn %{prv: prv} -> Enum.filter(prv, valuefilter_fun) end,
+    "maps:filter (pair)"                      => fn %{map: map} -> :maps.filter(pairfilter_fun, map) end,
+    "dict:filter (pair)"                      => fn %{dic: dic} -> :dict.filter(pairfilter_fun, dic) end,
+    "orddict:filter (pair)"                   => fn %{ord: ord} -> :orddict.filter(pairfilter_fun, ord) end,
+  },
+  data_inputs)
+
 Runner.bench("ConvertToList",
   %{
   "steady_vector:to_list"    => fn %{vec: vec} -> vec |> :steady_vector.to_list() end,
