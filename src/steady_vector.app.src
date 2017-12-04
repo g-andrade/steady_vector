@@ -1,5 +1,5 @@
 {application, steady_vector,
- [{description, "steady_vector is an array-like collection of values indexed by contiguous 0-based integer index and optimized for growing/shrinking at the end."},
+ [{description, "An array-like collection of values optimized for tail growth and shrinkage"},
   {vsn, git},
   {registered, []},
   {applications,
