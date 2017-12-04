@@ -1,5 +1,5 @@
 {application, steady_vector,
- [{description, "An array-like collection of values optimized for tail growth and shrinkage"},
+ [{description, "Array-like collections optimized for tail manipulation"},
   {vsn, git},
   {registered, []},
   {applications,
