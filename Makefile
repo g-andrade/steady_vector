@@ -27,18 +27,18 @@ $(REBAR3):
 	wget $(REBAR3_URL) || curl -Lo rebar3 $(REBAR3_URL)
 	@chmod a+x rebar3
 
-clean:
+clean: $(REBAR3)
 	@$(REBAR3) clean
 
 check: dialyzer xref
 
-dialyzer:
+dialyzer: $(REBAR3)
 	@$(REBAR3) dialyzer
 
-xref:
+xref: $(REBAR3)
 	@$(REBAR3) xref
 
-test:
+test: $(REBAR3)
 	@$(REBAR3) as $(TEST_PROFILE) eunit
 
 cover: test
@@ -50,5 +50,5 @@ benchmark:
 doc: build
 	./scripts/hackish_make_docs.sh
 
-publish:
+publish: $(REBAR3)
 	@$(REBAR3) as publication hex publish
