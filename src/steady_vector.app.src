@@ -10,5 +10,7 @@
   {modules, []},
 
   {licenses, ["MIT"]},
-  {links, [{"Github", "https://github.com/g-andrade/steady_vector"}]}
+  {links, [{"GitHub", "https://github.com/g-andrade/steady_vector"},
+           {"GitLab", "https://gitlab.com/g-andrade/steady_vector"}
+          ]}
  ]}.
