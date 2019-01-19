@@ -1,6 +1,6 @@
 {application, steady_vector,
  [{description, "Array-like collections optimized for tail manipulation"},
-  {vsn, git},
+  {vsn, "git"},
   {registered, []},
   {applications,
    [kernel,
@@ -9,7 +9,6 @@
   {env,[]},
   {modules, []},
 
-  {maintainers, ["Guilherme Andrade"]},
   {licenses, ["MIT"]},
   {links, [{"Github", "https://github.com/g-andrade/steady_vector"}]}
  ]}.
