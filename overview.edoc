@@ -32,7 +32,7 @@ Add `steady_vector' to your list of dependencies in `rebar.config':
 
 <pre lang="erlang">
 {deps,
- [{steady_vector, "1.0.0"}
+ [{steady_vector, "1.0.1"}
  ]}.
 </pre>
 And then run `rebar3 compile'
@@ -44,7 +44,7 @@ Add `steady_vector' to your list of dependencies in `mix.exs':
 <pre lang="elixir">
 def deps do
 [
-  {:steady_vector, "1.0.0"}
+  {:steady_vector, "1.0.1"}
 ]
 end
 </pre>
