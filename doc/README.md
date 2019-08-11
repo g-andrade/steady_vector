@@ -2,8 +2,9 @@
 
 # steady_vector #
 
-[![Build Status](https://travis-ci.org/g-andrade/steady_vector.png?branch=master)](https://travis-ci.org/g-andrade/steady_vector)
 [![Hex pm](http://img.shields.io/hexpm/v/steady_vector.svg?style=flat)](https://hex.pm/packages/steady_vector)
+[![Travis CI Build Status](https://travis-ci.org/g-andrade/steady_vector.png?branch=master)](https://travis-ci.org/g-andrade/steady_vector)
+[![Circle CI Build Status](https://circleci.com/gh/g-andrade/steady_vector/tree/master.svg?style=svg)](https://circleci.com/gh/g-andrade/steady_vector/tree/master)
 
 
 ### <a name="steady_vector_-_Persistent_Vector_for_Erlang_and_Elixir">steady_vector - Persistent Vector for Erlang and Elixir</a> ###
