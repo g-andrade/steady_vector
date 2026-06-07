@@ -51,25 +51,53 @@ structural sharing for updates, following the same design as
 %% API Function Exports
 %% ------------------------------------------------------------------
 
--export([append/2]).                -ignore_xref({append,2}).
--export([get/2]).                   -ignore_xref({get,2}).
--export([get/3]).                   -ignore_xref({get,3}).
--export([filter/2]).                -ignore_xref({filter,2}).
--export([find/2]).                  -ignore_xref({find,2}).
--export([foldl/3]).                 -ignore_xref({foldl,3}).
--export([foldr/3]).                 -ignore_xref({foldr,3}).
--export([foreach/2]).               -ignore_xref({foreach,2}).
--export([from_list/1]).             -ignore_xref({from_list,1}).
--export([is_empty/1]).              -ignore_xref({is_empty,1}).
--export([is_steady_vector/1]).      -ignore_xref({is_steady_vector,1}).
--export([last/1]).                  -ignore_xref({last,1}).
--export([last/2]).                  -ignore_xref({last,2}).
--export([map/2]).                   -ignore_xref({map,2}).
--export([new/0]).                   -ignore_xref({new,0}).
--export([remove_last/1]).           -ignore_xref({remove_last,1}).
--export([set/3]).                   -ignore_xref({set,3}).
--export([size/1]).                  -ignore_xref({size,1}).
--export([to_list/1]).               -ignore_xref({to_list,1}).
+-export(
+    [
+        append/2,
+        get/2,
+        get/3,
+        filter/2,
+        find/2,
+        foldl/3,
+        foldr/3,
+        foreach/2,
+        from_list/1,
+        is_empty/1,
+        is_steady_vector/1,
+        last/1,
+        last/2,
+        map/2,
+        new/0,
+        remove_last/1,
+        set/3,
+        size/1,
+        to_list/1
+    ]
+).
+
+-ignore_xref(
+    [
+        append/2,
+        get/2,
+        get/3,
+        filter/2,
+        find/2,
+        foldl/3,
+        foldr/3,
+        foreach/2,
+        from_list/1,
+        is_empty/1,
+        is_steady_vector/1,
+        last/1,
+        last/2,
+        map/2,
+        new/0,
+        remove_last/1,
+        set/3,
+        size/1,
+        to_list/1
+    ]
+).
 
 %% ------------------------------------------------------------------
 %% Macro Definitions
