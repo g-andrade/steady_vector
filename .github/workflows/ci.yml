@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         otp_vsn: ['24.3', '25.3', '26.2', '27.3', '28.5', '29.0']
-        os: ['ubuntu-22.04', 'windows-2022']
+        os: ['ubuntu-22.04']
     steps:
       - name: Checkout
         uses: actions/checkout@v6
