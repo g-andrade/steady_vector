@@ -1,5 +1,4 @@
 .rebar3
-_*
 .eunit
 *.o
 *.beam
@@ -8,10 +7,18 @@ _*
 *.swo
 .erlang.cookie
 ebin
+deps
 log
+logs
 erl_crash.dump
 .rebar
-logs
+rebar3.crashdump
 _build
 .idea
-rebar3.crashdump
+*.iml
+/doc/
+/tmp/
+/.claude/settings.local.json
+
+# asdf
+.tool-versions
