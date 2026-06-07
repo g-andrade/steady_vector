@@ -104,6 +104,8 @@ structural sharing for updates, following the same design as
 %% ------------------------------------------------------------------
 
 -ifdef(TEST).
+% Shrink the tree's branching factor so the test suite exercises
+% multiple tree levels without building huge vectors.
 -define(shift, 2).
 -else.
 -define(shift, 5).
