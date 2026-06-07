@@ -24,6 +24,29 @@
 -compile({no_auto_import,[{size,1}]}).
 -compile(inline_list_funcs).
 
+-ifdef(E48).
+-moduledoc """
+A persistent vector: an array-like collection of values optimized for growth
+and shrinkage at the tail.
+
+`steady_vector` optimizes the following operations:
+
+- getting the element count (`size/1`) — `O(1)`;
+- looking up an element by its 0-based index (`get/2`, `get/3`, `find/2`);
+- updating an element by its 0-based index (`set/3`);
+- appending a new element to the end (`append/2`);
+- removing the last element (`remove_last/1`);
+- enumeration (`foldl/3`, `foldr/3`, `foreach/2`);
+- mapping (`map/2`) and filtering (`filter/2`).
+
+Every operation other than `size/1` is `O(log32(N))`.
+
+It is implemented as a tree with 32-way branching at each level and uses
+structural sharing for updates, following the same design as
+[Clojure's persistent vectors](https://hypirion.com/musings/understanding-persistent-vector-pt-1).
+""".
+-endif.
+
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
@@ -76,6 +99,9 @@
 
 -type shift() :: pos_integer().
 
+-ifdef(E48).
+-doc "A 0-based index into a vector.".
+-endif.
 -type index() :: non_neg_integer().
 -export_type([index/0]).
 
@@ -85,6 +111,10 @@
           root = {} :: tuple(),
           tail = {} :: tuple()
          }).
+
+-ifdef(E48).
+-doc "A persistent vector, as returned by `new/0`.".
+-endif.
 -opaque t() :: #steady_vector{}.
 -export_type([t/0]).
 
@@ -92,14 +122,21 @@
 %% API Function Definitions
 %% ------------------------------------------------------------------
 
+-ifdef(E48).
+-doc """
+Appends `Value` to the end of `Vector`, returning the modified vector.
+
+`Vector` must be a valid vector or a `{badvec, Vector}` error is raised.
+
+See also `set/3`.
+""".
+-endif.
+
 -spec append(Value, Vector1) -> Vector2
             when Value :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
-%% @doc Appends `Value' to the end of `Vector'.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @see set/3
-%% @returns Modified `Vector'
+
 append(Value, #steady_vector{ tail = Tail } = Vector) when tuple_size(Tail) < ?block_size ->
     Vector#steady_vector{
       count = Vector#steady_vector.count + 1,
@@ -120,15 +157,25 @@ append(NewValue, #steady_vector{} = Vector) ->
 append(_NewValue, Vector) ->
     ?vec_error(Vector).
 
+%%%
+
+-ifdef(E48).
+-doc """
+Returns the value of the element in `Vector` at 0-based `Index`.
+
+`Index` must be an integer satisfying `0 =< Index < size(Vector)` or a `badarg`
+error is raised. `Vector` must be a valid vector or a `{badvec, Vector}` error
+is raised.
+
+See also `get/3` and `find/2`.
+""".
+-endif.
+
 -spec get(Index, Vector) -> Value | no_return()
             when Index :: index(),
                  Vector :: t(),
                  Value :: term().
-%% @doc Returns value of element in `Vector' at `0'-based `Index'.
-%% `Index' must be an integer and satisfy condition `0 =< Index =< size(Vector)' or a `badarg' error will be raised.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @see get/3
-%% @see find/2
+
 get(Index, Vector) when ?is_existing_index(Index, Vector) ->
     fast_get(Index, Vector);
 get(_Index, Vector) when ?is_vector(Vector) ->
@@ -136,16 +183,26 @@ get(_Index, Vector) when ?is_vector(Vector) ->
 get(_Index, Vector) ->
     ?vec_error(Vector).
 
-%% @doc Returns value of element in `Vector' at `0'-based `Index' or `Default' if `Index >= size(Vector)'.
-%% `Index' must be a non-negative integer or a `badarg' error will be raised.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @see get/2
-%% @see find/2
+%%%
+
+-ifdef(E48).
+-doc """
+Returns the value of the element in `Vector` at 0-based `Index`, or `Default` if
+`Index >= size(Vector)`.
+
+`Index` must be a non-negative integer or a `badarg` error is raised. `Vector`
+must be a valid vector or a `{badvec, Vector}` error is raised.
+
+See also `get/2` and `find/2`.
+""".
+-endif.
+
 -spec get(Index, Vector, Default) -> Value | Default
             when Index :: index(),
                  Vector :: t(),
                  Default :: term(),
                  Value :: term().
+
 get(Index, Vector, Default) when ?is_index(Index), ?is_vector(Vector) ->
     case Index < Vector#steady_vector.count of
         true -> fast_get(Index, Vector);
@@ -156,16 +213,25 @@ get(_Index, Vector, _Default) when ?is_vector(Vector) ->
 get(_Index, Vector, _Default) ->
     ?vec_error(Vector).
 
-%% @doc Filters `Vector' elements using predicate `Fun'.
-%% `Fun' must be an arity-2 function or a `badarg' error will be raised.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @returns The modified vector containing the filtered elements.
+%%%
+
+-ifdef(E48).
+-doc """
+Filters the elements of `Vector` using the predicate `Fun`, returning a new
+vector with the elements for which `Fun(Index, Value)` returned `true`.
+
+`Fun` must be an arity-2 function or a `badarg` error is raised. `Vector` must
+be a valid vector or a `{badvec, Vector}` error is raised.
+""".
+-endif.
+
 -spec filter(Fun, Vector1) -> Vector2
             when Fun :: fun((Index, Value) -> boolean()),
                  Index :: index(),
                  Value :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
+
 filter(Fun, Vector) when is_function(Fun, 2) ->
     foldl(
       fun (Index, Value, Acc) ->
@@ -180,16 +246,25 @@ filter(_Fun, Vector) when ?is_vector(Vector) ->
 filter(_Fun, Vector) ->
     ?vec_error(Vector).
 
-%% @doc Returns success-wrapped value of element in `Vector' at `0'-based `Index',
-%% or `error' if the index is too large.
-%% `Index' must be a non-negative integer or a `badarg' error will be raised.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @see get/2
-%% @see get/3
+%%%
+
+-ifdef(E48).
+-doc """
+Returns `{ok, Value}` for the element in `Vector` at 0-based `Index`, or `error`
+if the index is too large.
+
+`Index` must be a non-negative integer or a `badarg` error is raised. `Vector`
+must be a valid vector or a `{badvec, Vector}` error is raised.
+
+See also `get/2` and `get/3`.
+""".
+-endif.
+
 -spec find(Index, Vector) -> {ok, Value} | error
             when Index :: index(),
                  Vector :: t(),
                  Value :: term().
+
 find(Index, Vector) when ?is_index(Index), ?is_vector(Vector) ->
     case Index < Vector#steady_vector.count of
         true -> {ok, fast_get(Index, Vector)};
@@ -200,12 +275,24 @@ find(_Index, Vector) when ?is_vector(Vector) ->
 find(_Index, Vector) ->
     ?vec_error(Vector).
 
-%% @doc Calls `Fun(Index, Value, AccIn)' on successive elements of `Vector', starting with AccIn == Acc0.
-%% `Fun/3' must return a new accumulator, which is passed to the next call.
-%% The function returns the final value of the accumulator. `Acc0' is returned if the vector is empty.
-%% `Fun' must be an arity-3 function or a `badarg' error will be raised.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @see foldr/3
+%%%
+
+-ifdef(E48).
+-doc """
+Calls `Fun(Index, Value, AccIn)` on successive elements of `Vector`, starting
+with `AccIn =:= Acc0`.
+
+`Fun/3` must return a new accumulator, which is passed to the next call. The
+final value of the accumulator is returned; `Acc0` is returned if the vector is
+empty.
+
+`Fun` must be an arity-3 function or a `badarg` error is raised. `Vector` must
+be a valid vector or a `{badvec, Vector}` error is raised.
+
+See also `foldr/3`.
+""".
+-endif.
+
 -spec foldl(Fun, Acc0, Vector) -> AccN
             when Fun :: fun((Index, Value, AccIn) -> AccOut),
                  Index :: index(),
@@ -215,6 +302,7 @@ find(_Index, Vector) ->
                  Acc0 :: term(),
                  Vector :: t(),
                  AccN :: term().
+
 foldl(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
     countfoldl_leaves(Fun, Acc0, Vector);
 foldl(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
@@ -222,8 +310,16 @@ foldl(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
 foldl(_Fun, _Acc0, Vector) ->
     ?vec_error(Vector).
 
-%% @doc Like `foldl/3' but `Vector' is traversed from right to left.
-%% @see foldl/3
+%%%
+
+-ifdef(E48).
+-doc """
+Like `foldl/3`, but `Vector` is traversed from right to left.
+
+See also `foldl/3`.
+""".
+-endif.
+
 -spec foldr(Fun, Acc0, Vector) -> AccN
             when Fun :: fun((Index, Value, Acc1) -> Acc2),
                  Index :: index(),
@@ -233,6 +329,7 @@ foldl(_Fun, _Acc0, Vector) ->
                  Acc0 :: term(),
                  Vector :: t(),
                  AccN :: term().
+
 foldr(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
     countfoldr_leaves(Fun, Acc0, Vector);
 foldr(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
@@ -240,16 +337,26 @@ foldr(_Fun, _Acc0, Vector) when ?is_vector(Vector) ->
 foldr(_Fun, _Acc0, Vector) ->
     ?vec_error(Vector).
 
-%% @doc Calls `Fun(Index, Value)' for each `Value' in `Vector'.
-%% This function is used for its side effects and the evaluation order
-%% is defined to be the same as the order of the elements in the vector.
-%% `Fun' must be an arity-2 function or a `badarg' error will be raised.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%%%
+
+-ifdef(E48).
+-doc """
+Calls `Fun(Index, Value)` for each `Value` in `Vector`.
+
+This function is used for its side effects, and the evaluation order is the same
+as the order of the elements in the vector.
+
+`Fun` must be an arity-2 function or a `badarg` error is raised. `Vector` must
+be a valid vector or a `{badvec, Vector}` error is raised.
+""".
+-endif.
+
 -spec foreach(Fun, Vector) -> ok
             when Fun :: fun((Index, Value) -> term()),
                  Index :: index(),
                  Value :: term(),
                  Vector :: t().
+
 foreach(Fun, Vector) when is_function(Fun, 2) ->
     counteach_leaves(Fun, Vector);
 foreach(_Fun, Vector) when ?is_vector(Vector) ->
@@ -257,39 +364,79 @@ foreach(_Fun, Vector) when ?is_vector(Vector) ->
 foreach(_Fun, Vector) ->
     ?vec_error(Vector).
 
-%% @doc Converts a proper `List' of elements to a `Vector' containing them in the same order.
-%% `List' must be a list or a `{badvec,Vector}' error will be raised.
-%% @see to_list/1
+%%%
+
+-ifdef(E48).
+-doc """
+Converts a proper list into a vector containing the same elements in the same
+order.
+
+`List` must be a list or a `badarg` error is raised.
+
+See also `to_list/1`.
+""".
+-endif.
+
 -spec from_list(List) -> Vector
             when List :: list(),
                  Vector :: t().
+
 from_list(List) when is_list(List) ->
     lists:foldl(fun append/2, new(), List);
 from_list(_List) ->
     ?arg_error.
 
-%% @doc Returns `true' if `Vector' is empty, `false' otherwise.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @see size/1
+%%%
+
+-ifdef(E48).
+-doc """
+Returns `true` if `Vector` is empty, `false` otherwise.
+
+`Vector` must be a valid vector or a `{badvec, Vector}` error is raised.
+
+See also `size/1`.
+""".
+-endif.
+
 -spec is_empty(Vector) -> boolean()
             when Vector :: t().
+
 is_empty(Vector) when ?is_vector(Vector) ->
     Vector#steady_vector.count =:= 0;
 is_empty(Vector) ->
     ?vec_error(Vector).
 
-%% @doc Returns `true' if `Term' is a `steady_vector', `false' otherwise.
+%%%
+
+-ifdef(E48).
+-doc """
+Returns `true` if `Term` is a `steady_vector`, `false` otherwise.
+""".
+-endif.
+
 -spec is_steady_vector(Term) -> boolean()
             when Term :: term().
+
 is_steady_vector(Term) ->
     ?is_vector(Term).
 
-%% @doc Returns the last value of a non-empty `Vector'.
-%% If `Vector' is empty, an `emptyvec' error will be raised.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%%%
+
+-ifdef(E48).
+-doc """
+Returns the last value of a non-empty `Vector`.
+
+If `Vector` is empty, an `emptyvec` error is raised. `Vector` must be a valid
+vector or a `{badvec, Vector}` error is raised.
+
+See also `last/2`.
+""".
+-endif.
+
 -spec last(Vector) -> Value | no_return()
             when Vector :: t(),
                  Value :: term().
+
 last(#steady_vector{ count = Count } = Vector) ->
     case Count > 0 of
         true -> fast_get(Count - 1, Vector);
@@ -298,12 +445,23 @@ last(#steady_vector{ count = Count } = Vector) ->
 last(Vector) ->
     ?vec_error(Vector).
 
-%% @doc Returns the last value `Vector' if it's not empty, `Default' otherwise.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%%%
+
+-ifdef(E48).
+-doc """
+Returns the last value of `Vector` if it is not empty, `Default` otherwise.
+
+`Vector` must be a valid vector or a `{badvec, Vector}` error is raised.
+
+See also `last/1`.
+""".
+-endif.
+
 -spec last(Vector, Default) -> Value | Default
             when Vector :: t(),
                  Default :: term(),
                  Value :: term().
+
 last(#steady_vector{ count = Count } = Vector, Default) ->
     case Count > 0 of
         true -> fast_get(Count - 1, Vector);
@@ -312,9 +470,18 @@ last(#steady_vector{ count = Count } = Vector, Default) ->
 last(Vector, _Default) ->
     ?vec_error(Vector).
 
-%% @doc Maps function `Fun(Index, Value)' to all values of vector `Vector'.
-%% Returns a new vector containing the mapped values.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%%%
+
+-ifdef(E48).
+-doc """
+Maps `Fun(Index, Value)` over every value of `Vector`, returning a new vector
+containing the mapped values.
+
+`Fun` must be an arity-2 function or a `badarg` error is raised. `Vector` must
+be a valid vector or a `{badvec, Vector}` error is raised.
+""".
+-endif.
+
 -spec map(Fun, Vector1) -> Vector2
             when Fun :: fun((Index, Value1) -> Value2),
                  Index :: index(),
@@ -322,6 +489,7 @@ last(Vector, _Default) ->
                  Value2 :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
+
 map(Fun, Vector) when is_function(Fun, 2) ->
     countmap_leaves(Fun, Vector);
 map(_Fun, Vector) when ?is_vector(Vector) ->
@@ -329,18 +497,36 @@ map(_Fun, Vector) when ?is_vector(Vector) ->
 map(_Fun, Vector) ->
     ?vec_error(Vector).
 
-%% @doc Returns an empty vector.
+%%%
+
+-ifdef(E48).
+-doc """
+Returns a new, empty vector.
+""".
+-endif.
+
 -spec new() -> Vector
             when Vector :: t().
+
 new() ->
     #steady_vector{}.
 
-%% @doc Removes the last value of non-empty `Vector1' and returns `Vector2' with the element removed.
-%% If `Vector' is empty, an `emptyvec' error will be raised.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
+%%%
+
+-ifdef(E48).
+-doc """
+Removes the last value of the non-empty vector `Vector1` and returns `Vector2`
+with that element removed.
+
+If the vector is empty, an `emptyvec` error is raised. `Vector1` must be a valid
+vector or a `{badvec, Vector1}` error is raised.
+""".
+-endif.
+
 -spec remove_last(Vector1) -> Vector2 | no_return()
             when Vector1 :: t(),
                  Vector2 :: t().
+
 remove_last(#steady_vector{ tail = Tail } = Vector) when tuple_size(Tail) > 1 ->
     NewTail = tuple_delete_last(Tail),
     Vector#steady_vector{
@@ -365,17 +551,28 @@ remove_last(Vector) when ?is_vector(Vector) ->
 remove_last(Vector) ->
     ?vec_error(Vector).
 
-%% @doc Returns updated `Vector2' with element at `0'-based `Index' set to `Value'.
-%% `Index' must be an integer and satisfy condition `0 =< Index < size(Vector)'
-%% or a `badarg' error will be raised. If `Index' equals `size(Vector)', this
-%% function will behave like append/2.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @see append/2
+%%%
+
+-ifdef(E48).
+-doc """
+Returns `Vector2`, a copy of `Vector1` with the element at 0-based `Index` set to
+`Value`.
+
+`Index` must be an integer satisfying `0 =< Index < size(Vector)` or a `badarg`
+error is raised. If `Index` equals `size(Vector)`, this function behaves like
+`append/2`. `Vector1` must be a valid vector or a `{badvec, Vector1}` error is
+raised.
+
+See also `append/2`.
+""".
+-endif.
+
 -spec set(Index, Value, Vector1) -> Vector2 | no_return()
             when Index :: index(),
                  Value :: term(),
                  Vector1 :: t(),
                  Vector2 :: t().
+
 set(Index, Value, Vector) when ?is_existing_index(Index, Vector) ->
     case Index >= tail_start(Vector) of
         true ->
@@ -395,21 +592,41 @@ set(_Index, _Value, Vector) when ?is_vector(Vector) ->
 set(_Index, _Value, Vector) ->
     ?vec_error(Vector).
 
-%% @doc Returns number of elements in `Vector'.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @see is_empty/1
+%%%
+
+-ifdef(E48).
+-doc """
+Returns the number of elements in `Vector`.
+
+`Vector` must be a valid vector or a `{badvec, Vector}` error is raised.
+
+See also `is_empty/1`.
+""".
+-endif.
+
 -spec size(Vector) -> non_neg_integer()
             when Vector :: t().
+
 size(#steady_vector{ count = Count }) ->
     Count;
 size(Vector) ->
     ?vec_error(Vector).
 
-%% @doc Returns list with `Vector''s elements in the same order.
-%% `Vector' must be a valid vector or a `{badvec,Vector}' error will be raised.
-%% @see from_list/1
+%%%
+
+-ifdef(E48).
+-doc """
+Returns a list with the elements of `Vector` in the same order.
+
+`Vector` must be a valid vector or a `{badvec, Vector}` error is raised.
+
+See also `from_list/1`.
+""".
+-endif.
+
 -spec to_list(Vector) -> list()
             when Vector :: t().
+
 to_list(Vector) ->
     foldr_leaf_blocks(
       fun (Block, Acc) -> tuple_to_list(Block) ++ Acc end,

@@ -1,82 +1,73 @@
+# steady_vector
 
+[![Hex version](https://img.shields.io/hexpm/v/steady_vector.svg?style=flat)](https://hex.pm/packages/steady_vector)
+[![CI status](https://github.com/g-andrade/steady_vector/actions/workflows/ci.yml/badge.svg)](https://github.com/g-andrade/steady_vector/actions/workflows/ci.yml)
+[![Supported Erlang/OTP versions](https://img.shields.io/badge/Supported%20Erlang%2FOTP-24%20to%2029-blue)](https://www.erlang.org)
+[![API reference](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/steady_vector/)
 
-# steady_vector #
-
-[![Hex pm](http://img.shields.io/hexpm/v/steady_vector.svg?style=flat)](https://hex.pm/packages/steady_vector)
-[![Travis CI Build Status](https://travis-ci.org/g-andrade/steady_vector.png?branch=master)](https://travis-ci.org/g-andrade/steady_vector)
-[![Circle CI Build Status](https://circleci.com/gh/g-andrade/steady_vector/tree/master.svg?style=svg)](https://circleci.com/gh/g-andrade/steady_vector/tree/master)
-
-
-### <a name="steady_vector_-_Persistent_Vector_for_Erlang_and_Elixir">steady_vector - Persistent Vector for Erlang and Elixir</a> ###
-
-
-#### <a name="Description">Description</a> ####
-
-`steady_vector` is an array-like collection of values optimized for tail growth and shrinkage. It's heavily based on Dmitry Kakurin's [PersistentVector](https://github.com/Dimagog/persistent_vector) implementation for Elixir and, other than for some idiomatic changes and a few new functions, `steady_vector`'s interface is conceptually very similar.
+`steady_vector` is a persistent vector for Erlang and Elixir: an array-like
+collection of values optimized for tail growth and shrinkage. It's heavily based
+on Dmitry Kakurin's
+[PersistentVector](https://github.com/Dimagog/persistent_vector) implementation
+for Elixir and, other than some idiomatic changes and a few new functions, its
+interface is conceptually very similar.
 
 `steady_vector` optimizes the following operations:
-* Get element count
-* Lookup element by index (0-based)
-* Update element by index (0-based)
-* Adding new element to the end
-* Removing element from the end
-* Enumeration
-* Mapping
-* Folding (left and right)
 
-Get count operation is `O(1)`, most others are `O(log32(N))`.
+- getting the element count
+- looking up an element by its 0-based index
+- updating an element by its 0-based index
+- appending a new element to the end
+- removing the last element
+- enumeration
+- mapping
+- folding (left and right)
 
-`steady_vector` is implemented as a tree with 32-way branching at each level and uses *structural sharing* for updates.
-All ideas are borrowed directly from `PersistentVector`, which in turn borrowed them from [Clojure](http://hypirion.com/musings/understanding-persistent-vector-pt-1).
+Getting the element count is `O(1)`; most other operations are `O(log32(N))`.
 
+It is implemented as a tree with 32-way branching at each level and uses
+*structural sharing* for updates. All ideas are borrowed directly from
+`PersistentVector`, which in turn borrowed them from
+[Clojure](https://hypirion.com/musings/understanding-persistent-vector-pt-1).
 
-#### <a name="Installation_(Erlang)">Installation (Erlang)</a> ####
+## Installation
+
+### Erlang
 
 Add `steady_vector` to your list of dependencies in `rebar.config`:
 
-```erlang
-
-{deps,
- [{steady_vector, "1.0.1"}
- ]}.
-
+``` erlang
+{deps, [
+    {steady_vector, "1.0.1"}
+]}.
 ```
 
-And then run `rebar3 compile`
+And then run `rebar3 compile`.
 
-
-#### <a name="Installation_(Elixir)">Installation (Elixir)</a> ####
+### Elixir
 
 Add `steady_vector` to your list of dependencies in `mix.exs`:
 
-```elixir
-
+``` elixir
 def deps do
-[
-  {:steady_vector, "1.0.1"}
-]
+    [
+        {:steady_vector, "1.0.1"}
+    ]
 end
-
 ```
 
-And then run `mix deps.get`
+And then run `mix deps.get`.
 
+## Documentation
 
-#### <a name="Requirements">Requirements</a> ####
+The API reference is available on [HexDocs](https://hexdocs.pm/steady_vector/).
 
-The library has been tested on Erlang/OTP versions 17.5, 18.3, 19.{0..3}, and 20.{0..1}. The supported build tool is `rebar3`.
+## Requirements
 
+`steady_vector` is tested against Erlang/OTP 24 to 29. The supported build tool
+is `rebar3`.
 
-#### <a name="More_info">More info</a> ####
+## License
 
-See [benchmarks](https://github.com/g-andrade/steady_vector/blob/master/benchmarks.md).
-
-See API reference indexed below.
-
-
-## Modules ##
-
-
-<table width="100%" border="0" summary="list of modules">
-<tr><td><a href="https://github.com/g-andrade/steady_vector/blob/master/doc/steady_vector.md" class="module">steady_vector</a></td></tr></table>
-
+`steady_vector` is licensed under the MIT license. See the [LICENSE](LICENSE.md)
+file for details.
