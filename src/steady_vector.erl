@@ -21,7 +21,7 @@
 
 -module(steady_vector).
 
--compile({no_auto_import,[{size,1}]}).
+-compile({no_auto_import, [{size, 1}]}).
 -compile(inline_list_funcs).
 
 -ifdef(E48).
@@ -118,7 +118,7 @@ structural sharing for updates, following the same design as
 -define(is_vector(V), (is_record(V, steady_vector))).
 
 -define(arg_error, (error(badarg))).
--define(vec_error(Vector), (error({badvec,Vector}))).
+-define(vec_error(Vector), (error({badvec, Vector}))).
 -define(empty_vec_error, (error(emptyvec))).
 
 %% ------------------------------------------------------------------
@@ -134,11 +134,11 @@ structural sharing for updates, following the same design as
 -export_type([index/0]).
 
 -record(steady_vector, {
-          count = 0 :: index(),
-          shift = ?shift :: shift(),
-          root = {} :: tuple(),
-          tail = {} :: tuple()
-         }).
+    count = 0 :: index(),
+    shift = ?shift :: shift(),
+    root = {} :: tuple(),
+    tail = {} :: tuple()
+}).
 
 -ifdef(E48).
 -doc "A persistent vector, as returned by `new/0`.".
@@ -160,27 +160,27 @@ See also `set/3`.
 """.
 -endif.
 
--spec append(Value, Vector1) -> Vector2
-            when Value :: term(),
-                 Vector1 :: t(),
-                 Vector2 :: t().
+-spec append(Value, Vector1) -> Vector2 when
+    Value :: term(),
+    Vector1 :: t(),
+    Vector2 :: t().
 
-append(Value, #steady_vector{ tail = Tail } = Vector) when tuple_size(Tail) < ?block_size ->
+append(Value, #steady_vector{tail = Tail} = Vector) when tuple_size(Tail) < ?block_size ->
     Vector#steady_vector{
-      count = Vector#steady_vector.count + 1,
-      tail = tuple_append(Value, Tail)
-     };
+        count = Vector#steady_vector.count + 1,
+        tail = tuple_append(Value, Tail)
+    };
 append(NewValue, #steady_vector{} = Vector) ->
-    #steady_vector{ count = Count, shift = Shift, root = Root, tail = Tail } = Vector,
+    #steady_vector{count = Count, shift = Shift, root = Root, tail = Tail} = Vector,
     NewCount = Count + 1,
     NewTail = {NewValue},
     case append_recur(Root, Shift, Tail) of
         {ok, NewRoot} ->
-            Vector#steady_vector{ count = NewCount, root = NewRoot, tail = NewTail };
+            Vector#steady_vector{count = NewCount, root = NewRoot, tail = NewTail};
         {overflow, TailPath} ->
             NewShift = Shift + ?shift,
             NewRoot = {Root, TailPath},
-            Vector#steady_vector{ count = NewCount, shift = NewShift, root = NewRoot, tail = NewTail }
+            Vector#steady_vector{count = NewCount, shift = NewShift, root = NewRoot, tail = NewTail}
     end;
 append(_NewValue, Vector) ->
     ?vec_error(Vector).
@@ -199,10 +199,10 @@ See also `get/3` and `find/2`.
 """.
 -endif.
 
--spec get(Index, Vector) -> Value | no_return()
-            when Index :: index(),
-                 Vector :: t(),
-                 Value :: term().
+-spec get(Index, Vector) -> Value | no_return() when
+    Index :: index(),
+    Vector :: t(),
+    Value :: term().
 
 get(Index, Vector) when ?is_existing_index(Index, Vector) ->
     fast_get(Index, Vector);
@@ -225,11 +225,11 @@ See also `get/2` and `find/2`.
 """.
 -endif.
 
--spec get(Index, Vector, Default) -> Value | Default
-            when Index :: index(),
-                 Vector :: t(),
-                 Default :: term(),
-                 Value :: term().
+-spec get(Index, Vector, Default) -> Value | Default when
+    Index :: index(),
+    Vector :: t(),
+    Default :: term(),
+    Value :: term().
 
 get(Index, Vector, Default) when ?is_index(Index), ?is_vector(Vector) ->
     case Index < Vector#steady_vector.count of
@@ -253,22 +253,24 @@ be a valid vector or a `{badvec, Vector}` error is raised.
 """.
 -endif.
 
--spec filter(Fun, Vector1) -> Vector2
-            when Fun :: fun((Index, Value) -> boolean()),
-                 Index :: index(),
-                 Value :: term(),
-                 Vector1 :: t(),
-                 Vector2 :: t().
+-spec filter(Fun, Vector1) -> Vector2 when
+    Fun :: fun((Index, Value) -> boolean()),
+    Index :: index(),
+    Value :: term(),
+    Vector1 :: t(),
+    Vector2 :: t().
 
 filter(Fun, Vector) when is_function(Fun, 2) ->
     foldl(
-      fun (Index, Value, Acc) ->
-              case Fun(Index, Value) of
-                  true -> append(Value, Acc);
-                  false -> Acc
-              end
-      end,
-      new(), Vector);
+        fun(Index, Value, Acc) ->
+            case Fun(Index, Value) of
+                true -> append(Value, Acc);
+                false -> Acc
+            end
+        end,
+        new(),
+        Vector
+    );
 filter(_Fun, Vector) when ?is_vector(Vector) ->
     ?arg_error;
 filter(_Fun, Vector) ->
@@ -288,10 +290,10 @@ See also `get/2` and `get/3`.
 """.
 -endif.
 
--spec find(Index, Vector) -> {ok, Value} | error
-            when Index :: index(),
-                 Vector :: t(),
-                 Value :: term().
+-spec find(Index, Vector) -> {ok, Value} | error when
+    Index :: index(),
+    Vector :: t(),
+    Value :: term().
 
 find(Index, Vector) when ?is_index(Index), ?is_vector(Vector) ->
     case Index < Vector#steady_vector.count of
@@ -321,15 +323,15 @@ See also `foldr/3`.
 """.
 -endif.
 
--spec foldl(Fun, Acc0, Vector) -> AccN
-            when Fun :: fun((Index, Value, AccIn) -> AccOut),
-                 Index :: index(),
-                 Value :: term(),
-                 AccIn :: Acc0 | AccOut,
-                 AccOut :: term() | AccN,
-                 Acc0 :: term(),
-                 Vector :: t(),
-                 AccN :: term().
+-spec foldl(Fun, Acc0, Vector) -> AccN when
+    Fun :: fun((Index, Value, AccIn) -> AccOut),
+    Index :: index(),
+    Value :: term(),
+    AccIn :: Acc0 | AccOut,
+    AccOut :: term() | AccN,
+    Acc0 :: term(),
+    Vector :: t(),
+    AccN :: term().
 
 foldl(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
     countfoldl_leaves(Fun, Acc0, Vector);
@@ -348,15 +350,15 @@ See also `foldl/3`.
 """.
 -endif.
 
--spec foldr(Fun, Acc0, Vector) -> AccN
-            when Fun :: fun((Index, Value, Acc1) -> Acc2),
-                 Index :: index(),
-                 Value :: term(),
-                 Acc1 :: Acc0 | Acc2,
-                 Acc2 :: term() | AccN,
-                 Acc0 :: term(),
-                 Vector :: t(),
-                 AccN :: term().
+-spec foldr(Fun, Acc0, Vector) -> AccN when
+    Fun :: fun((Index, Value, Acc1) -> Acc2),
+    Index :: index(),
+    Value :: term(),
+    Acc1 :: Acc0 | Acc2,
+    Acc2 :: term() | AccN,
+    Acc0 :: term(),
+    Vector :: t(),
+    AccN :: term().
 
 foldr(Fun, Acc0, Vector) when is_function(Fun, 3), ?is_vector(Vector) ->
     countfoldr_leaves(Fun, Acc0, Vector);
@@ -379,11 +381,11 @@ be a valid vector or a `{badvec, Vector}` error is raised.
 """.
 -endif.
 
--spec foreach(Fun, Vector) -> ok
-            when Fun :: fun((Index, Value) -> term()),
-                 Index :: index(),
-                 Value :: term(),
-                 Vector :: t().
+-spec foreach(Fun, Vector) -> ok when
+    Fun :: fun((Index, Value) -> term()),
+    Index :: index(),
+    Value :: term(),
+    Vector :: t().
 
 foreach(Fun, Vector) when is_function(Fun, 2) ->
     counteach_leaves(Fun, Vector);
@@ -405,9 +407,9 @@ See also `to_list/1`.
 """.
 -endif.
 
--spec from_list(List) -> Vector
-            when List :: list(),
-                 Vector :: t().
+-spec from_list(List) -> Vector when
+    List :: list(),
+    Vector :: t().
 
 from_list(List) when is_list(List) ->
     lists:foldl(fun append/2, new(), List);
@@ -426,8 +428,8 @@ See also `size/1`.
 """.
 -endif.
 
--spec is_empty(Vector) -> boolean()
-            when Vector :: t().
+-spec is_empty(Vector) -> boolean() when
+    Vector :: t().
 
 is_empty(Vector) when ?is_vector(Vector) ->
     Vector#steady_vector.count =:= 0;
@@ -442,8 +444,8 @@ Returns `true` if `Term` is a `steady_vector`, `false` otherwise.
 """.
 -endif.
 
--spec is_steady_vector(Term) -> boolean()
-            when Term :: term().
+-spec is_steady_vector(Term) -> boolean() when
+    Term :: term().
 
 is_steady_vector(Term) ->
     ?is_vector(Term).
@@ -461,11 +463,11 @@ See also `last/2`.
 """.
 -endif.
 
--spec last(Vector) -> Value | no_return()
-            when Vector :: t(),
-                 Value :: term().
+-spec last(Vector) -> Value | no_return() when
+    Vector :: t(),
+    Value :: term().
 
-last(#steady_vector{ count = Count } = Vector) ->
+last(#steady_vector{count = Count} = Vector) ->
     case Count > 0 of
         true -> fast_get(Count - 1, Vector);
         _ -> ?empty_vec_error(Vector)
@@ -485,12 +487,12 @@ See also `last/1`.
 """.
 -endif.
 
--spec last(Vector, Default) -> Value | Default
-            when Vector :: t(),
-                 Default :: term(),
-                 Value :: term().
+-spec last(Vector, Default) -> Value | Default when
+    Vector :: t(),
+    Default :: term(),
+    Value :: term().
 
-last(#steady_vector{ count = Count } = Vector, Default) ->
+last(#steady_vector{count = Count} = Vector, Default) ->
     case Count > 0 of
         true -> fast_get(Count - 1, Vector);
         _ -> Default
@@ -510,13 +512,13 @@ be a valid vector or a `{badvec, Vector}` error is raised.
 """.
 -endif.
 
--spec map(Fun, Vector1) -> Vector2
-            when Fun :: fun((Index, Value1) -> Value2),
-                 Index :: index(),
-                 Value1 :: term(),
-                 Value2 :: term(),
-                 Vector1 :: t(),
-                 Vector2 :: t().
+-spec map(Fun, Vector1) -> Vector2 when
+    Fun :: fun((Index, Value1) -> Value2),
+    Index :: index(),
+    Value1 :: term(),
+    Value2 :: term(),
+    Vector1 :: t(),
+    Vector2 :: t().
 
 map(Fun, Vector) when is_function(Fun, 2) ->
     countmap_leaves(Fun, Vector);
@@ -533,8 +535,8 @@ Returns a new, empty vector.
 """.
 -endif.
 
--spec new() -> Vector
-            when Vector :: t().
+-spec new() -> Vector when
+    Vector :: t().
 
 new() ->
     #steady_vector{}.
@@ -551,28 +553,35 @@ vector or a `{badvec, Vector1}` error is raised.
 """.
 -endif.
 
--spec remove_last(Vector1) -> Vector2 | no_return()
-            when Vector1 :: t(),
-                 Vector2 :: t().
+-spec remove_last(Vector1) -> Vector2 | no_return() when
+    Vector1 :: t(),
+    Vector2 :: t().
 
-remove_last(#steady_vector{ tail = Tail } = Vector) when tuple_size(Tail) > 1 ->
+remove_last(#steady_vector{tail = Tail} = Vector) when tuple_size(Tail) > 1 ->
     NewTail = tuple_delete_last(Tail),
     Vector#steady_vector{
-      count = Vector#steady_vector.count - 1,
-      tail = NewTail };
-remove_last(#steady_vector{ count = Count } = Vector) when Count > 1 ->
-    #steady_vector{ shift = Shift, root = Root } = Vector,
+        count = Vector#steady_vector.count - 1,
+        tail = NewTail
+    };
+remove_last(#steady_vector{count = Count} = Vector) when Count > 1 ->
+    #steady_vector{shift = Shift, root = Root} = Vector,
     NewCount = Count - 1,
     {NewRoot, NewTail} = remove_last_recur(Root, Shift),
-    if tuple_size(NewRoot) =:= 1 andalso Shift > ?shift ->
-           NewShift = Shift - ?shift,
-           {InnerNewRoot} = NewRoot, % remove topmost tree level
-           Vector#steady_vector{ count = NewCount, root = InnerNewRoot,
-                                 shift = NewShift, tail = NewTail };
-       true ->
-           Vector#steady_vector{ count = NewCount, root = NewRoot, tail = NewTail }
+    if
+        tuple_size(NewRoot) =:= 1 andalso Shift > ?shift ->
+            NewShift = Shift - ?shift,
+            % remove topmost tree level
+            {InnerNewRoot} = NewRoot,
+            Vector#steady_vector{
+                count = NewCount,
+                root = InnerNewRoot,
+                shift = NewShift,
+                tail = NewTail
+            };
+        true ->
+            Vector#steady_vector{count = NewCount, root = NewRoot, tail = NewTail}
     end;
-remove_last(#steady_vector{ count = 1 }) ->
+remove_last(#steady_vector{count = 1}) ->
     new();
 remove_last(Vector) when ?is_vector(Vector) ->
     ?empty_vec_error;
@@ -595,11 +604,11 @@ See also `append/2`.
 """.
 -endif.
 
--spec set(Index, Value, Vector1) -> Vector2 | no_return()
-            when Index :: index(),
-                 Value :: term(),
-                 Vector1 :: t(),
-                 Vector2 :: t().
+-spec set(Index, Value, Vector1) -> Vector2 | no_return() when
+    Index :: index(),
+    Value :: term(),
+    Vector1 :: t(),
+    Vector2 :: t().
 
 set(Index, Value, Vector) when ?is_existing_index(Index, Vector) ->
     case Index >= tail_start(Vector) of
@@ -607,11 +616,11 @@ set(Index, Value, Vector) when ?is_existing_index(Index, Vector) ->
             Tail = Vector#steady_vector.tail,
             ValueIndex = Index band ?mask,
             NewTail = tuple_set(ValueIndex, Value, Tail),
-            Vector#steady_vector{ tail = NewTail };
+            Vector#steady_vector{tail = NewTail};
         _ ->
             Root = Vector#steady_vector.root,
             NewRoot = set_recur(Root, Vector#steady_vector.shift, Index, Value),
-            Vector#steady_vector{ root = NewRoot }
+            Vector#steady_vector{root = NewRoot}
     end;
 set(Index, Value, Vector) when ?is_next_index(Index, Vector) ->
     append(Value, Vector);
@@ -632,10 +641,10 @@ See also `is_empty/1`.
 """.
 -endif.
 
--spec size(Vector) -> non_neg_integer()
-            when Vector :: t().
+-spec size(Vector) -> non_neg_integer() when
+    Vector :: t().
 
-size(#steady_vector{ count = Count }) ->
+size(#steady_vector{count = Count}) ->
     Count;
 size(Vector) ->
     ?vec_error(Vector).
@@ -652,13 +661,15 @@ See also `from_list/1`.
 """.
 -endif.
 
--spec to_list(Vector) -> list()
-            when Vector :: t().
+-spec to_list(Vector) -> list() when
+    Vector :: t().
 
 to_list(Vector) ->
     foldr_leaf_blocks(
-      fun (Block, Acc) -> tuple_to_list(Block) ++ Acc end,
-      [], Vector).
+        fun(Block, Acc) -> tuple_to_list(Block) ++ Acc end,
+        [],
+        Vector
+    ).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Appending
@@ -710,7 +721,7 @@ get_recur(Leaf, _Level, _Index) ->
 %% ------------------------------------------------------------------
 
 countfoldl_leaves(Fun, Acc1, Vector) ->
-    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
+    #steady_vector{shift = Shift, root = Root, tail = Tail} = Vector,
     Counter1 = 0,
     {Counter2, Acc2} = countfoldl_descendant_leaf_blocks(Fun, Counter1, Acc1, Root, Shift),
     {_Counter3, Acc3} = countfoldl_node_leaves(Fun, Counter2, Acc2, Tail),
@@ -722,10 +733,13 @@ countfoldl_descendant_leaf_blocks(Fun, Counter, Acc, Node, Level) when Level =:=
 countfoldl_descendant_leaf_blocks(Fun, Counter0, Acc0, Node, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_foldl(
-      fun (Child, Counter, Acc) ->
-              countfoldl_descendant_leaf_blocks(Fun, Counter, Acc, Child, ChildrenLevel)
-      end,
-      Counter0, Acc0, Node).
+        fun(Child, Counter, Acc) ->
+            countfoldl_descendant_leaf_blocks(Fun, Counter, Acc, Child, ChildrenLevel)
+        end,
+        Counter0,
+        Acc0,
+        Node
+    ).
 
 countfoldl_node_leaves(Fun, Counter, Acc, Node) ->
     tuple_countfoldl(Fun, Counter, Acc, Node).
@@ -735,7 +749,7 @@ countfoldl_node_leaves(Fun, Counter, Acc, Node) ->
 %% ------------------------------------------------------------------
 
 foldr_leaf_blocks(Fun, Acc1, Vector) ->
-    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
+    #steady_vector{shift = Shift, root = Root, tail = Tail} = Vector,
     Acc2 = Fun(Tail, Acc1),
     foldr_descendant_leaf_blocks(Fun, Acc2, Root, Shift).
 
@@ -745,13 +759,15 @@ foldr_descendant_leaf_blocks(Fun, Acc, Node, Level) when Level =:= ?shift ->
 foldr_descendant_leaf_blocks(Fun, Acc0, Node, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_foldr(
-      fun (Child, Acc) ->
-              foldr_descendant_leaf_blocks(Fun, Acc, Child, ChildrenLevel)
-      end,
-      Acc0, Node).
+        fun(Child, Acc) ->
+            foldr_descendant_leaf_blocks(Fun, Acc, Child, ChildrenLevel)
+        end,
+        Acc0,
+        Node
+    ).
 
 countfoldr_leaves(Fun, Acc1, Vector) ->
-    #steady_vector{ count = Size, shift = Shift, root = Root, tail = Tail } = Vector,
+    #steady_vector{count = Size, shift = Shift, root = Root, tail = Tail} = Vector,
     Counter1 = Size - 1,
     {Counter2, Acc2} = countfoldr_node_leaves(Fun, Counter1, Acc1, Tail),
     {_Counter3, Acc3} = countfoldr_descendant_leaf_blocks(Fun, Counter2, Acc2, Root, Shift),
@@ -763,10 +779,13 @@ countfoldr_descendant_leaf_blocks(Fun, Counter, Acc, Node, Level) when Level =:=
 countfoldr_descendant_leaf_blocks(Fun, Counter0, Acc0, Node, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_foldr(
-      fun (Child, Counter, Acc) ->
-              countfoldr_descendant_leaf_blocks(Fun, Counter, Acc, Child, ChildrenLevel)
-      end,
-      Counter0, Acc0, Node).
+        fun(Child, Counter, Acc) ->
+            countfoldr_descendant_leaf_blocks(Fun, Counter, Acc, Child, ChildrenLevel)
+        end,
+        Counter0,
+        Acc0,
+        Node
+    ).
 
 countfoldr_node_leaves(Fun, Counter, Acc, Node) ->
     tuple_countfoldr(Fun, Counter, Acc, Node).
@@ -776,7 +795,7 @@ countfoldr_node_leaves(Fun, Counter, Acc, Node) ->
 %% ------------------------------------------------------------------
 
 counteach_leaves(Fun, Vector) ->
-    #steady_vector{ shift = Shift, root = Root, tail = Tail } = Vector,
+    #steady_vector{shift = Shift, root = Root, tail = Tail} = Vector,
     Counter1 = 0,
     Counter2 = counteach_descendant_leaf_blocks(Fun, Counter1, Root, Shift),
     _Counter3 = counteach_node_leaves(Fun, Counter2, Tail),
@@ -788,29 +807,33 @@ counteach_descendant_leaf_blocks(Fun, Counter, Node, Level) when Level =:= 0 ->
 counteach_descendant_leaf_blocks(Fun, Counter0, Node, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_foldl(
-      fun (Child, Counter) ->
-              counteach_descendant_leaf_blocks(Fun, Counter, Child, ChildrenLevel)
-      end,
-      Counter0, Node).
+        fun(Child, Counter) ->
+            counteach_descendant_leaf_blocks(Fun, Counter, Child, ChildrenLevel)
+        end,
+        Counter0,
+        Node
+    ).
 
 counteach_node_leaves(Fun, Counter0, Node) ->
     tuple_foldl(
-      fun (Value, Counter) ->
-              _ = Fun(Counter, Value),
-              Counter + 1
-      end,
-      Counter0, Node).
+        fun(Value, Counter) ->
+            _ = Fun(Counter, Value),
+            Counter + 1
+        end,
+        Counter0,
+        Node
+    ).
 
 %% ------------------------------------------------------------------
 %% Internal Function Definitions - Mapping
 %% ------------------------------------------------------------------
 
 countmap_leaves(Fun, Vector) ->
-    #steady_vector{ shift = Shift, root = Root1, tail = Tail1 } = Vector,
+    #steady_vector{shift = Shift, root = Root1, tail = Tail1} = Vector,
     Counter1 = 0,
     {Counter2, Root2} = countmap_descendant_leaf_blocks(Fun, Counter1, Root1, Shift),
     {_Counter3, Tail2} = countmap_node_leaves(Fun, Counter2, Tail1),
-    Vector#steady_vector{ root = Root2, tail = Tail2 }.
+    Vector#steady_vector{root = Root2, tail = Tail2}.
 
 countmap_descendant_leaf_blocks(Fun, Counter, Node, Level) when Level =:= 0 ->
     % leaf node
@@ -818,10 +841,12 @@ countmap_descendant_leaf_blocks(Fun, Counter, Node, Level) when Level =:= 0 ->
 countmap_descendant_leaf_blocks(Fun, Counter0, Node, Level) ->
     ChildrenLevel = Level - ?shift,
     tuple_map(
-      fun (Counter, Child) ->
-              countmap_descendant_leaf_blocks(Fun, Counter, Child, ChildrenLevel)
-      end,
-      Counter0, Node).
+        fun(Counter, Child) ->
+            countmap_descendant_leaf_blocks(Fun, Counter, Child, ChildrenLevel)
+        end,
+        Counter0,
+        Node
+    ).
 
 countmap_node_leaves(Fun, Counter0, Node) ->
     tuple_countmap(Fun, Counter0, Node).
@@ -867,84 +892,84 @@ set_recur(Leaf, _Level, Index, Val) ->
 tail_start(#steady_vector{} = Vector) ->
     Vector#steady_vector.count - tuple_size(Vector#steady_vector.tail).
 
--compile({inline,{tuple_append,2}}).
+-compile({inline, {tuple_append, 2}}).
 tuple_append(Value, Tuple) ->
     erlang:append_element(Tuple, Value).
 
--compile({inline,{tuple_delete,2}}).
+-compile({inline, {tuple_delete, 2}}).
 tuple_delete(Index, Tuple) ->
     erlang:delete_element(Index + 1, Tuple).
 
--compile({inline,{tuple_delete_last,1}}).
+-compile({inline, {tuple_delete_last, 1}}).
 tuple_delete_last(Tuple) ->
     erlang:delete_element(tuple_size(Tuple), Tuple).
 
--compile({inline,{tuple_get,2}}).
+-compile({inline, {tuple_get, 2}}).
 tuple_get(Index, Tuple) ->
     element(Index + 1, Tuple).
 
--compile({inline,{tuple_foldl,3}}).
+-compile({inline, {tuple_foldl, 3}}).
 tuple_foldl(Fun, Acc, Tuple) ->
     lists:foldl(Fun, Acc, tuple_to_list(Tuple)).
 
--compile({inline,{tuple_foldl,4}}).
+-compile({inline, {tuple_foldl, 4}}).
 tuple_foldl(Fun, Counter, Acc, Tuple) ->
     List = tuple_to_list(Tuple),
     tuple_foldl_recur(Fun, Counter, Acc, List).
 
--compile({inline,{tuple_foldl_recur,4}}).
+-compile({inline, {tuple_foldl_recur, 4}}).
 tuple_foldl_recur(_Fun, Counter, Acc, []) ->
     {Counter, Acc};
-tuple_foldl_recur(Fun, Counter1, Acc1, [H|T]) ->
+tuple_foldl_recur(Fun, Counter1, Acc1, [H | T]) ->
     {Counter2, Acc2} = Fun(H, Counter1, Acc1),
     tuple_foldl_recur(Fun, Counter2, Acc2, T).
 
--compile({inline,{tuple_countfoldl,4}}).
+-compile({inline, {tuple_countfoldl, 4}}).
 tuple_countfoldl(Fun, Counter, Acc, Tuple) ->
     List = tuple_to_list(Tuple),
     tuple_countfoldl_recur(Fun, Counter, Acc, List).
 
--compile({inline,{tuple_countfoldl_recur,4}}).
+-compile({inline, {tuple_countfoldl_recur, 4}}).
 tuple_countfoldl_recur(_Fun, Counter, Acc, []) ->
     {Counter, Acc};
-tuple_countfoldl_recur(Fun, Counter, Acc1, [H|T]) ->
+tuple_countfoldl_recur(Fun, Counter, Acc1, [H | T]) ->
     Acc2 = Fun(Counter, H, Acc1),
     tuple_countfoldl_recur(Fun, Counter + 1, Acc2, T).
 
--compile({inline,{tuple_foldr,3}}).
+-compile({inline, {tuple_foldr, 3}}).
 tuple_foldr(Fun, Acc, Tuple) ->
     lists:foldr(Fun, Acc, tuple_to_list(Tuple)).
 
--compile({inline,{tuple_foldr,4}}).
+-compile({inline, {tuple_foldr, 4}}).
 tuple_foldr(Fun, Counter, Acc, Tuple) ->
     List = lists:reverse(tuple_to_list(Tuple)),
     tuple_foldr_recur(Fun, Counter, Acc, List).
 
--compile({inline,{tuple_foldr_recur,4}}).
+-compile({inline, {tuple_foldr_recur, 4}}).
 tuple_foldr_recur(_Fun, Counter, Acc, []) ->
     {Counter, Acc};
-tuple_foldr_recur(Fun, Counter1, Acc1, [H|T]) ->
+tuple_foldr_recur(Fun, Counter1, Acc1, [H | T]) ->
     {Counter2, Acc2} = Fun(H, Counter1, Acc1),
     tuple_foldr_recur(Fun, Counter2, Acc2, T).
 
--compile({inline,{tuple_countfoldr,4}}).
+-compile({inline, {tuple_countfoldr, 4}}).
 tuple_countfoldr(Fun, Counter, Acc, Tuple) ->
     List = lists:reverse(tuple_to_list(Tuple)),
     tuple_countfoldr_recur(Fun, Counter, Acc, List).
 
--compile({inline,{tuple_countfoldr_recur,4}}).
+-compile({inline, {tuple_countfoldr_recur, 4}}).
 tuple_countfoldr_recur(_Fun, Counter, Acc, []) ->
     {Counter, Acc};
-tuple_countfoldr_recur(Fun, Counter, Acc1, [H|T]) ->
+tuple_countfoldr_recur(Fun, Counter, Acc1, [H | T]) ->
     Acc2 = Fun(Counter, H, Acc1),
     tuple_countfoldr_recur(Fun, Counter - 1, Acc2, T).
 
--compile({inline,{tuple_map,3}}).
+-compile({inline, {tuple_map, 3}}).
 tuple_map(Fun, Counter, Tuple) ->
     List = tuple_to_list(Tuple),
     tuple_map_recur(Fun, Counter, List, []).
 
--compile({inline,{tuple_map_recur,4}}).
+-compile({inline, {tuple_map_recur, 4}}).
 tuple_map_recur(_Fun, Counter, [], Acc) ->
     Tuple = list_to_tuple(lists:reverse(Acc)),
     {Counter, Tuple};
@@ -952,12 +977,12 @@ tuple_map_recur(Fun, Counter1, [Value1 | T], Acc) ->
     {Counter2, Value2} = Fun(Counter1, Value1),
     tuple_map_recur(Fun, Counter2, T, [Value2 | Acc]).
 
--compile({inline,{tuple_countmap,3}}).
+-compile({inline, {tuple_countmap, 3}}).
 tuple_countmap(Fun, Counter, Tuple) ->
     List = tuple_to_list(Tuple),
     tuple_countmap_recur(Fun, Counter, List, []).
 
--compile({inline,{tuple_countmap_recur,4}}).
+-compile({inline, {tuple_countmap_recur, 4}}).
 tuple_countmap_recur(_Fun, Counter, [], Acc) ->
     {Counter, list_to_tuple(lists:reverse(Acc))};
 tuple_countmap_recur(Fun, Counter1, [Value1 | T], Acc) ->
@@ -965,7 +990,6 @@ tuple_countmap_recur(Fun, Counter1, [Value1 | T], Acc) ->
     Counter2 = Counter1 + 1,
     tuple_countmap_recur(Fun, Counter2, T, [Value2 | Acc]).
 
--compile({inline,{tuple_set,3}}).
+-compile({inline, {tuple_set, 3}}).
 tuple_set(Index, Value, Tuple) ->
     setelement(Index + 1, Tuple, Value).
-
