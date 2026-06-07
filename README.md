@@ -38,7 +38,7 @@ Add `steady_vector` to your list of dependencies in `rebar.config`:
 
 ``` erlang
 {deps, [
-    {steady_vector, "1.0.1"}
+    {steady_vector, "~> 1.1"}
 ]}.
 ```
 
@@ -51,7 +51,7 @@ Add `steady_vector` to your list of dependencies in `mix.exs`:
 ``` elixir
 def deps do
     [
-        {:steady_vector, "1.0.1"}
+        {:steady_vector, "~> 1.1"}
     ]
 end
 ```
