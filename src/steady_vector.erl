@@ -567,8 +567,8 @@ remove_last(#steady_vector{count = Count} = Vector) when Count > 1 ->
     #steady_vector{shift = Shift, root = Root} = Vector,
     NewCount = Count - 1,
     {NewRoot, NewTail} = remove_last_recur(Root, Shift),
-    if
-        tuple_size(NewRoot) =:= 1 andalso Shift > ?shift ->
+    case tuple_size(NewRoot) =:= 1 andalso Shift > ?shift of
+        true ->
             NewShift = Shift - ?shift,
             % remove topmost tree level
             {InnerNewRoot} = NewRoot,
@@ -578,7 +578,7 @@ remove_last(#steady_vector{count = Count} = Vector) when Count > 1 ->
                 shift = NewShift,
                 tail = NewTail
             };
-        true ->
+        _ ->
             Vector#steady_vector{count = NewCount, root = NewRoot, tail = NewTail}
     end;
 remove_last(#steady_vector{count = 1}) ->

@@ -96,13 +96,13 @@ remove_all_test(_Config) ->
 
 remove_last_tail_test(_Config) ->
     Vec1 = steady_vector:append(0, steady_vector:new()),
-    Vec1_R = steady_vector:remove_last(Vec1),
-    ?assertEqual(0, steady_vector:size(Vec1_R)),
+    Vec1R = steady_vector:remove_last(Vec1),
+    ?assertEqual(0, steady_vector:size(Vec1R)),
 
     Vec2 = steady_vector:append(1, Vec1),
-    Vec2_R = steady_vector:remove_last(Vec2),
-    ?assertEqual(1, steady_vector:size(Vec2_R)),
-    ?assertEqual(0, steady_vector:get(0, Vec2_R)).
+    Vec2R = steady_vector:remove_last(Vec2),
+    ?assertEqual(1, steady_vector:size(Vec2R)),
+    ?assertEqual(0, steady_vector:get(0, Vec2R)).
 
 remove_last_root_test(_Config) ->
     C = 20,
@@ -318,11 +318,11 @@ assert_element_identity(Vec) ->
 
     lists:foreach(ValidationFun, lists:seq(0, C - 1)),
 
-    if
-        C > 0 ->
+    case C > 0 of
+        true ->
             ?assertEqual(C - 1, steady_vector:last(Vec, empty)),
             ?assertEqual(C - 1, steady_vector:last(Vec));
-        true ->
+        _ ->
             ?assertEqual(empty, steady_vector:last(Vec, empty)),
             ?assertError(badarg, steady_vector:last(Vec))
     end,
